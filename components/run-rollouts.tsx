@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, Copy } from "lucide-react";
+import { Check, ChevronDown, Copy, Link2, MoreVertical } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -679,18 +679,27 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              className="bg-zinc-800 text-xs text-zinc-100 hover:bg-zinc-700 md:text-sm"
-            >
-              Share
-            </Button>
-            <Button
-              variant="secondary"
-              className="bg-zinc-800 text-xs text-zinc-100 hover:bg-zinc-700 md:text-sm"
-            >
-              View trained LoRA
-            </Button>
+              <Button
+                variant="secondary"
+                className="bg-zinc-800 text-xs text-zinc-100 hover:bg-zinc-700 md:text-sm"
+              >
+                <Link2 className="size-4" />
+                Share
+              </Button>
+              <Button
+                variant="secondary"
+                className="bg-zinc-800 text-xs text-zinc-100 hover:bg-zinc-700 md:text-sm"
+              >
+                View trained LoRA
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
+                aria-label="More options"
+              >
+                <MoreVertical className="size-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -749,8 +758,8 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                   ))}
                   <col className="w-32" />
                 </colgroup>
-                <TableHeader>
-                  <TableRow className="border-b border-white/5 hover:bg-transparent">
+                <TableHeader className="[&_th]:border-b [&_th]:border-b-white/10">
+                  <TableRow className="border-b-0 hover:bg-transparent">
                     <TableHead className="h-9 w-10 min-w-10 px-3 py-2 font-medium text-zinc-400">
                       <Checkbox
                         checked={
@@ -793,7 +802,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="[&_tr:last-child_td]:border-b-0">
                   {rows.map((row, index) => (
                     <TableRow
                       key={row.key}
@@ -865,11 +874,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <div className="shrink-0 text-xs text-zinc-500">
-                Selected rollouts:{" "}
-                <span className="font-semibold text-zinc-300">{selectedCount}</span>
-              </div>
+            <div className="flex items-start justify-end gap-4">
               <StepSliderControl
                 steps={steps}
                 stepIndex={stepIndex}

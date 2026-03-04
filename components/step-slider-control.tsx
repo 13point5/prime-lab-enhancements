@@ -79,6 +79,17 @@ export function StepSliderControl({
   trailingAction,
 }: StepSliderControlProps) {
   const maxIndex = Math.max(steps.length - 1, 0);
+  const isAtFullProgress = maxIndex === 0 || stepIndex >= maxIndex;
+  const sliderClassName = [
+    "w-full",
+    "[&_[data-slot=slider-thumb]]:size-4",
+    "[&_[data-slot=slider-thumb]]:border-zinc-500",
+    "[&_[data-slot=slider-thumb]]:bg-black",
+    isAtFullProgress
+      ? "[&_[data-slot=slider-track]]:bg-zinc-200"
+      : "[&_[data-slot=slider-track]]:bg-zinc-700",
+    "[&_[data-slot=slider-range]]:bg-zinc-100",
+  ].join(" ");
   const activeStep = steps[stepIndex] ?? null;
   const canPrev = stepIndex > 0;
   const canNext = stepIndex < steps.length - 1;
@@ -86,7 +97,7 @@ export function StepSliderControl({
 
   if (inline) {
     return (
-      <div className="flex min-w-[420px] w-fit items-center gap-2 md:gap-3">
+      <div className="flex min-w-[420px] w-fit items-start gap-2 md:gap-3">
         <div className="flex min-w-[280px] max-w-[360px] flex-col">
           <div className="flex h-8 items-center gap-1">
             <span className="w-10 shrink-0 text-xs text-zinc-400">Step:</span>
@@ -96,7 +107,7 @@ export function StepSliderControl({
               max={maxIndex}
               step={1}
               onValueChange={(value) => onStepIndexChange(value[0] ?? 0)}
-              className="w-full [&_[data-slot=slider-thumb]]:size-4 [&_[data-slot=slider-thumb]]:border-zinc-500 [&_[data-slot=slider-thumb]]:bg-black [&_[data-slot=slider-track]]:bg-zinc-200 [&_[data-slot=slider-range]]:bg-zinc-200"
+              className={sliderClassName}
             />
           </div>
           <div className="mt-0.5 flex items-center gap-1">
@@ -108,29 +119,31 @@ export function StepSliderControl({
             </div>
           </div>
         </div>
-        <div className="flex h-8 shrink-0 items-stretch overflow-hidden rounded-md border border-zinc-700 bg-black">
+
+        <div className="flex h-8 shrink-0 items-center overflow-hidden rounded-md border border-zinc-700 bg-black">
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center border-r border-zinc-700 text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
+            className="flex h-full w-8 items-center justify-center border-r border-zinc-700 text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
             onClick={() => canPrev && onStepIndexChange(stepIndex - 1)}
             disabled={!canPrev}
             aria-label="Previous step"
           >
-            <ChevronLeft className="size-3" />
+            <ChevronLeft className="size-3.5" />
           </button>
-          <div className="flex min-w-14 items-center justify-center border-r border-zinc-700 px-2 text-xs font-semibold text-zinc-100">
+          <div className="flex h-full min-w-14 items-center justify-center border-r border-zinc-700 px-2 text-xs font-semibold leading-none text-zinc-100">
             {activeStep ?? "-"}
           </div>
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
+            className="flex h-full w-8 items-center justify-center text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
             onClick={() => canNext && onStepIndexChange(stepIndex + 1)}
             disabled={!canNext}
             aria-label="Next step"
           >
-            <ChevronRight className="size-3" />
+            <ChevronRight className="size-3.5" />
           </button>
         </div>
+
         <Button
           variant="secondary"
           className="h-8 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
@@ -155,7 +168,7 @@ export function StepSliderControl({
             max={maxIndex}
             step={1}
             onValueChange={(value) => onStepIndexChange(value[0] ?? 0)}
-            className="w-full [&_[data-slot=slider-thumb]]:size-4 [&_[data-slot=slider-thumb]]:border-zinc-500 [&_[data-slot=slider-thumb]]:bg-black [&_[data-slot=slider-track]]:bg-zinc-200 [&_[data-slot=slider-range]]:bg-zinc-200"
+            className={sliderClassName}
           />
         </div>
         <div className="mt-1 flex items-center gap-2">
@@ -168,27 +181,27 @@ export function StepSliderControl({
         </div>
       </div>
 
-      <div className="flex h-8 shrink-0 items-stretch overflow-hidden rounded-md border border-zinc-700 bg-black">
+      <div className="flex h-8 shrink-0 items-center overflow-hidden rounded-md border border-zinc-700 bg-black">
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center border-r border-zinc-700 text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
+          className="flex h-full w-8 items-center justify-center border-r border-zinc-700 text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
           onClick={() => canPrev && onStepIndexChange(stepIndex - 1)}
           disabled={!canPrev}
           aria-label="Previous step"
         >
-          <ChevronLeft className="size-3" />
+          <ChevronLeft className="size-3.5" />
         </button>
-        <div className="flex min-w-14 items-center justify-center border-r border-zinc-700 px-2 text-xs font-semibold text-zinc-100">
+        <div className="flex h-full min-w-14 items-center justify-center border-r border-zinc-700 px-2 text-xs font-semibold leading-none text-zinc-100">
           {activeStep ?? "-"}
         </div>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
+          className="flex h-full w-8 items-center justify-center text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-zinc-100 disabled:opacity-40"
           onClick={() => canNext && onStepIndexChange(stepIndex + 1)}
           disabled={!canNext}
           aria-label="Next step"
         >
-          <ChevronRight className="size-3" />
+          <ChevronRight className="size-3.5" />
         </button>
       </div>
 
