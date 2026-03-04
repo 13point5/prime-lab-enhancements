@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, Copy } from "lucide-react";
+import { Check, ChevronDown, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StepSliderControl } from "@/components/step-slider-control";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -37,11 +38,21 @@ type RawStepPayload = {
   samples?: unknown[];
 };
 
+type RunEnvironment = {
+  id?: string;
+};
+
+type RunPayloadRun = {
+  id?: string;
+  name?: string;
+  status?: string;
+  base_model?: string;
+  max_steps?: number | string;
+  environments?: RunEnvironment[];
+};
+
 type RunPayload = {
-  run?: {
-    id?: string;
-    name?: string;
-  };
+  run?: RunPayloadRun;
 };
 
 export type RawRun = {
@@ -55,6 +66,8 @@ export type RawRolloutsData = {
 };
 
 type Row = {
+  selectionKey: string;
+  step: number | null;
   key: string;
   id: string;
   task: string;
@@ -71,6 +84,39 @@ type ConversationMessage = {
   role: string;
   content: string;
 };
+
+type SelectedRolloutEntry = {
+  run_id: string;
+  run_name: string;
+  step: number | null;
+  row: Row;
+};
+
+function getRolloutSelectionKey(runId: string, step: number | null, rowKey: string): string {
+  return `${runId}::${step ?? "na"}::${rowKey}`;
+}
+
+function formatStepLabel(step: number | null): string {
+  return step === null ? "n/a" : String(step);
+}
+
+function compareSampleIds(a: unknown, b: unknown): number {
+  const aNum = typeof a === "number" ? a : Number(a);
+  const bNum = typeof b === "number" ? b : Number(b);
+  const aIsNum = Number.isFinite(aNum);
+  const bIsNum = Number.isFinite(bNum);
+  if (aIsNum && bIsNum) {
+    return aNum - bNum;
+  }
+  return String(a ?? "").localeCompare(String(b ?? ""));
+}
+
+function formatRoleLabel(role: string): string {
+  if (!role) {
+    return "Message";
+  }
+  return `${role.charAt(0).toUpperCase()}${role.slice(1)}`;
+}
 
 function parseMaybeJson(value: unknown): unknown {
   if (typeof value !== "string") {
@@ -317,14 +363,21 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     return [...keys].sort((a, b) => a.localeCompare(b));
   }, [run]);
 
+  const runName = run?.run_payload?.run?.name ?? run?.run_id ?? "No run loaded";
+  const runId = run?.run_payload?.run?.id ?? run?.run_id ?? "unknown-run";
+
   const rows = React.useMemo<Row[]>(() => {
     return activeSamples.map((sample, index) => {
       const metrics = extractMetrics(sample);
       const numTurns = toNumber(metrics.num_turns);
       const idValue = sample.problem_id ?? sample.sample_id ?? index;
+      const rowKey = `${activeStep ?? "na"}:${sample.problem_id ?? "na"}:${sample.sample_id ?? "na"}:${index}`;
+      const selectionKey = getRolloutSelectionKey(runId, activeStep, rowKey);
 
       return {
-        key: `${activeStep ?? "na"}:${sample.problem_id ?? "na"}:${sample.sample_id ?? "na"}:${index}`,
+        selectionKey,
+        step: activeStep,
+        key: rowKey,
         id: String(idValue),
         task: typeof sample.task === "string" ? sample.task : "-",
         prompt: extractPromptText(sample.prompt),
@@ -335,13 +388,35 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         sample,
       };
     });
-  }, [activeSamples, activeStep]);
+  }, [activeSamples, activeStep, runId]);
 
-  const runName = run?.run_payload?.run?.name ?? run?.run_id ?? "No run loaded";
-  const runId = run?.run_payload?.run?.id ?? run?.run_id ?? "-";
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [dialogRolloutIndex, setDialogRolloutIndex] = React.useState(0);
   const [expandedMessageKeys, setExpandedMessageKeys] = React.useState<string[]>([]);
+  const [selectedRollouts, setSelectedRollouts] = React.useState<
+    Record<string, SelectedRolloutEntry>
+  >({});
+  const [copyStatus, setCopyStatus] = React.useState<"idle" | "copied" | "error">("idle");
+
+  const selectedCount = React.useMemo(
+    () => Object.keys(selectedRollouts).length,
+    [selectedRollouts],
+  );
+
+  const visibleSelection = React.useMemo(() => {
+    const total = rows.length;
+    let selected = 0;
+    for (const row of rows) {
+      if (selectedRollouts[row.selectionKey]) {
+        selected += 1;
+      }
+    }
+    return {
+      total,
+      selected,
+      allSelected: total > 0 && selected === total,
+    };
+  }, [rows, selectedRollouts]);
 
   const handleStepIndexChange = React.useCallback(
     (nextIndex: number) => {
@@ -353,6 +428,50 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
       setStepIndex(bounded);
     },
     [steps.length],
+  );
+
+  const toggleRolloutSelection = React.useCallback(
+    (row: Row, checked: boolean) => {
+      setSelectedRollouts((current) => {
+        const next = { ...current };
+        if (checked) {
+          next[row.selectionKey] = {
+            run_id: runId,
+            run_name: runName,
+            step: row.step,
+            row,
+          };
+        } else {
+          delete next[row.selectionKey];
+        }
+        return next;
+      });
+      setCopyStatus("idle");
+    },
+    [runId, runName],
+  );
+
+  const toggleVisibleSelection = React.useCallback(
+    (checked: boolean) => {
+      setSelectedRollouts((current) => {
+        const next = { ...current };
+        for (const row of rows) {
+          if (checked) {
+            next[row.selectionKey] = {
+              run_id: runId,
+              run_name: runName,
+              step: row.step,
+              row,
+            };
+          } else {
+            delete next[row.selectionKey];
+          }
+        }
+        return next;
+      });
+      setCopyStatus("idle");
+    },
+    [rows, runId, runName],
   );
 
   const selectedRollout =
@@ -396,6 +515,150 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     setExpandedMessageKeys(selectedMessages.map((message) => message.key));
   }, [selectedMessages]);
 
+  const copySelectedRollouts = React.useCallback(async () => {
+    const items = Object.values(selectedRollouts).sort((a, b) => {
+      if (a.run_id !== b.run_id) {
+        return a.run_id.localeCompare(b.run_id);
+      }
+      const aStep = a.step ?? Number.POSITIVE_INFINITY;
+      const bStep = b.step ?? Number.POSITIVE_INFINITY;
+      if (aStep !== bStep) {
+        return aStep - bStep;
+      }
+      return compareSampleIds(a.row.sample.sample_id, b.row.sample.sample_id);
+    });
+
+    const runs = data?.runs ?? [];
+    const runById = new Map<string, RawRun>();
+    for (const rawRun of runs) {
+      const id = rawRun.run_payload?.run?.id ?? rawRun.run_id;
+      runById.set(id, rawRun);
+    }
+
+    const lines: string[] = [];
+    lines.push("# RL Rollout Export");
+    lines.push(`Exported At: ${new Date().toISOString()}`);
+    lines.push(`Selected Rollouts: ${items.length}`);
+    lines.push("");
+
+    const uniqueRunIds = [...new Set(items.map((item) => item.run_id))];
+    lines.push("## Run Summary");
+    for (const runKey of uniqueRunIds) {
+      const sourceRun = runById.get(runKey);
+      const meta = sourceRun?.run_payload?.run;
+      const envId = meta?.environments?.[0]?.id;
+      lines.push(`- Run ID: ${runKey}`);
+      lines.push(`  - Name: ${meta?.name ?? sourceRun?.run_id ?? "n/a"}`);
+      lines.push(`  - Environment: ${envId ?? "n/a"}`);
+      lines.push(`  - Model: ${meta?.base_model ?? "n/a"}`);
+      lines.push(`  - Status: ${meta?.status ?? "n/a"}`);
+      lines.push(`  - Max Steps: ${meta?.max_steps ?? "n/a"}`);
+    }
+    lines.push("");
+
+    for (const runKey of uniqueRunIds) {
+      const sourceRun = runById.get(runKey);
+      const meta = sourceRun?.run_payload?.run;
+      const envId = meta?.environments?.[0]?.id;
+      lines.push(`## Run ${runKey}`);
+      lines.push(`- Name: ${meta?.name ?? sourceRun?.run_id ?? "n/a"}`);
+      lines.push(`- Environment: ${envId ?? "n/a"}`);
+      lines.push(`- Model: ${meta?.base_model ?? "n/a"}`);
+      lines.push(`- Status: ${meta?.status ?? "n/a"}`);
+      lines.push("");
+
+      const runItems = items.filter((item) => item.run_id === runKey);
+      const uniqueSteps = [...new Set(runItems.map((item) => formatStepLabel(item.step)))];
+
+      for (const stepLabel of uniqueSteps) {
+        lines.push(`### Checkpoint ${stepLabel}`);
+        lines.push("");
+
+        const stepItems = runItems
+          .filter((item) => formatStepLabel(item.step) === stepLabel)
+          .sort((a, b) => compareSampleIds(a.row.sample.sample_id, b.row.sample.sample_id));
+
+        stepItems.forEach((item, index) => {
+          const sample = item.row.sample;
+          const messages = extractConversationMessages(sample);
+          lines.push(
+            `#### Rollout ${index + 1} (sample_id=${sample.sample_id ?? "n/a"}, problem_id=${
+              sample.problem_id ?? "n/a"
+            }, reward=${displayNumber(item.row.reward)})`,
+          );
+          lines.push("");
+
+          if (messages.length > 0) {
+            for (const message of messages) {
+              lines.push(`${formatRoleLabel(message.role)}:`);
+              lines.push("````text");
+              lines.push(message.content || "");
+              lines.push("````");
+              lines.push("");
+            }
+          } else {
+            lines.push("Messages:");
+            lines.push("````text");
+            lines.push("(no messages)");
+            lines.push("````");
+            lines.push("");
+          }
+
+          lines.push("Metadata:");
+          lines.push("````json");
+          lines.push(
+            JSON.stringify(
+              {
+                step: item.step,
+                run_id: item.run_id,
+                sample_id: sample.sample_id ?? null,
+                problem_id: sample.problem_id ?? null,
+                reward: item.row.reward,
+                metrics: item.row.metrics,
+                info: sample.info ?? null,
+              },
+              null,
+              2,
+            ),
+          );
+          lines.push("````");
+          lines.push("");
+        });
+      }
+    }
+
+    const text = lines.join("\n");
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (typeof document !== "undefined") {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      } else {
+        throw new Error("Clipboard unavailable");
+      }
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+  }, [data?.runs, selectedRollouts]);
+
+  React.useEffect(() => {
+    if (copyStatus !== "copied") {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => setCopyStatus("idle"), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [copyStatus]);
+
   return (
     <main className="min-h-screen bg-black text-zinc-100">
       <header className="border-b border-zinc-800">
@@ -435,8 +698,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
 
       <div className="mx-auto w-full max-w-[2100px] px-3 pb-4 pt-5 md:px-6 md:pb-6 md:pt-6">
         <Tabs defaultValue="data" className="w-full gap-4">
-          <div className="flex flex-row flex-nowrap items-start justify-between gap-4">
-            <TabsList className="h-9 shrink-0 bg-zinc-800 p-1">
+          <TabsList className="h-9 w-fit shrink-0 bg-zinc-800 p-1">
             <TabsTrigger value="overview" className="text-xs md:text-sm">
               Overview
             </TabsTrigger>
@@ -450,13 +712,6 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               Resources
             </TabsTrigger>
           </TabsList>
-            <StepSliderControl
-              steps={steps}
-              stepIndex={stepIndex}
-              onStepIndexChange={handleStepIndexChange}
-              inline
-            />
-          </div>
 
           <TabsContent value="overview">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-zinc-400">
@@ -481,8 +736,9 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               className="overflow-auto rounded-md bg-[#141414]"
               style={{ border: "1px solid rgba(255, 255, 255, 0.05)" }}
             >
-              <Table className="min-w-[1230px] table-fixed text-sm">
+              <Table className="min-w-[1230px] table-fixed border-separate border-spacing-0 text-sm">
                 <colgroup>
+                  <col className="w-10" />
                   <col className="w-10" />
                   <col className="w-44" />
                   <col className="w-[350px]" />
@@ -495,6 +751,20 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                 </colgroup>
                 <TableHeader>
                   <TableRow className="border-b border-white/5 hover:bg-transparent">
+                    <TableHead className="h-9 w-10 min-w-10 px-3 py-2 font-medium text-zinc-400">
+                      <Checkbox
+                        checked={
+                          visibleSelection.allSelected
+                            ? true
+                            : visibleSelection.selected > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={(checked) => toggleVisibleSelection(checked === true)}
+                        aria-label="Select visible rollouts"
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    </TableHead>
                     <TableHead className="h-9 w-10 min-w-10 px-3 py-2 font-medium text-zinc-400">
                       id
                     </TableHead>
@@ -527,9 +797,9 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                   {rows.map((row, index) => (
                     <TableRow
                       key={row.key}
-                      className={`cursor-pointer border-b border-white/5 transition-colors hover:!bg-white/[0.08] ${
+                      className={`cursor-pointer transition-colors border-b-0 hover:!bg-white/[0.08] ${
                         index % 2 === 0 ? "bg-white/[0.02]" : ""
-                      }`}
+                      } ${selectedRollouts[row.selectionKey] ? "bg-violet-500/[0.12]" : ""}`}
                       onClick={() => {
                         setDialogRolloutIndex(index);
                         setDialogOpen(true);
@@ -543,30 +813,41 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                       }}
                       tabIndex={0}
                     >
-                      <TableCell className="max-w-10 truncate px-3 py-2 text-sm text-zinc-300">
+                      <TableCell className="max-w-10 border-b border-white/5 px-3 py-2">
+                        <Checkbox
+                          checked={Boolean(selectedRollouts[row.selectionKey])}
+                          onCheckedChange={(checked) =>
+                            toggleRolloutSelection(row, checked === true)
+                          }
+                          aria-label={`Select rollout ${row.id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-10 truncate border-b border-white/5 px-3 py-2 text-sm text-zinc-300">
                         {row.id}
                       </TableCell>
-                      <TableCell className="max-w-44 truncate px-3 py-2 font-mono text-xs text-zinc-400">
+                      <TableCell className="max-w-44 truncate border-b border-white/5 px-3 py-2 font-mono text-xs text-zinc-400">
                         {row.task}
                       </TableCell>
-                      <TableCell className="max-w-[350px] truncate px-3 py-2 font-mono text-xs text-zinc-200">
+                      <TableCell className="max-w-[350px] truncate border-b border-white/5 px-3 py-2 font-mono text-xs text-zinc-200">
                         {row.prompt || "-"}
                       </TableCell>
-                      <TableCell className="max-w-56 truncate px-3 py-2 font-mono text-xs text-zinc-500">
+                      <TableCell className="max-w-56 truncate border-b border-white/5 px-3 py-2 font-mono text-xs text-zinc-500">
                         {row.info}
                       </TableCell>
-                      <TableCell className="px-3 py-2 text-right text-sm font-semibold text-emerald-400">
+                      <TableCell className="border-b border-white/5 px-3 py-2 text-right text-sm font-semibold text-emerald-400">
                         {displayNumber(row.reward)}
                       </TableCell>
                       {rewardColumns.map((column) => (
                         <TableCell
                           key={column}
-                          className="px-3 py-2 text-right text-sm text-zinc-300"
+                          className="border-b border-white/5 px-3 py-2 text-right text-sm text-zinc-300"
                         >
                           {displayNumber(toNumber(row.metrics[column]))}
                         </TableCell>
                       ))}
-                      <TableCell className="px-3 py-2 text-right text-sm text-zinc-300">
+                      <TableCell className="border-b border-white/5 px-3 py-2 text-right text-sm text-zinc-300">
                         {displayNumber(row.numTurns)}
                       </TableCell>
                     </TableRow>
@@ -574,7 +855,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                   {rows.length === 0 ? (
                     <TableRow className="border-b border-white/5">
                       <TableCell
-                        colSpan={6 + rewardColumns.length}
+                        colSpan={7 + rewardColumns.length}
                         className="py-8 text-center text-sm text-zinc-500"
                       >
                         No rollout data available for this step.
@@ -583,6 +864,42 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                   ) : null}
                 </TableBody>
               </Table>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="shrink-0 text-xs text-zinc-500">
+                Selected rollouts:{" "}
+                <span className="font-semibold text-zinc-300">{selectedCount}</span>
+              </div>
+              <StepSliderControl
+                steps={steps}
+                stepIndex={stepIndex}
+                onStepIndexChange={handleStepIndexChange}
+                inline
+                trailingAction={
+                  <Button
+                    variant="secondary"
+                    className="h-8 justify-start bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+                    onClick={() => void copySelectedRollouts()}
+                    disabled={selectedCount === 0}
+                  >
+                    <span className="relative inline-flex items-center whitespace-nowrap text-left">
+                        <span className="invisible whitespace-nowrap">{`Copy Rollouts (${selectedCount})`}</span>
+                      <span className="absolute inset-0 inline-flex items-center gap-1.5 whitespace-nowrap">
+                        {copyStatus === "copied" ? (
+                          <>
+                            <span>Copied</span>
+                            <Check className="size-3.5 text-emerald-400" />
+                          </>
+                        ) : copyStatus === "error" ? (
+                          "Copy Failed"
+                        ) : (
+                          `Copy Rollouts (${selectedCount})`
+                        )}
+                      </span>
+                    </span>
+                  </Button>
+                }
+              />
             </div>
           </TabsContent>
         </Tabs>
@@ -607,28 +924,44 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               <div className="min-h-0 flex-1 overflow-y-auto p-2">
                 <div className="space-y-1.5">
                   {rows.map((row, index) => {
-                    const selected = index === dialogRolloutIndex;
+                    const isActive = index === dialogRolloutIndex;
+                    const isChecked = Boolean(selectedRollouts[row.selectionKey]);
                     return (
-                      <button
+                      <div
                         key={`${row.key}:dialog-item`}
-                        type="button"
-                        className={`w-full rounded-md border px-2 py-2 text-left transition-colors ${
-                          selected
-                            ? "border-transparent bg-black/80"
+                        className={`w-full rounded-md border px-2 py-2 transition-colors ${
+                          isActive
+                            ? "border-white/15 bg-black/80"
                             : "border-transparent bg-white/[0.02] hover:bg-white/[0.06]"
-                        }`}
-                        onClick={() => setDialogRolloutIndex(index)}
+                        } ${isChecked ? "ring-1 ring-violet-500/60" : ""}`}
                       >
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <span className="text-xs text-zinc-400">#{row.id}</span>
-                          <span className="text-sm font-semibold text-emerald-400">
-                            {displayNumber(row.reward)}
-                          </span>
+                        <div className="flex items-start gap-2">
+                          <div className="pt-0.5">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) =>
+                                toggleRolloutSelection(row, checked === true)
+                              }
+                              aria-label={`Select rollout ${row.id} in dialog`}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left"
+                            onClick={() => setDialogRolloutIndex(index)}
+                          >
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <span className="text-xs text-zinc-400">#{row.id}</span>
+                              <span className="text-sm font-semibold text-emerald-400">
+                                {displayNumber(row.reward)}
+                              </span>
+                            </div>
+                            <p className="line-clamp-2 text-xs text-zinc-300">
+                              {row.prompt || "(no prompt text)"}
+                            </p>
+                          </button>
                         </div>
-                        <p className="line-clamp-2 text-xs text-zinc-300">
-                          {row.prompt || "(no prompt text)"}
-                        </p>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

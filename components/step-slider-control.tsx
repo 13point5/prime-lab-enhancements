@@ -14,6 +14,7 @@ type StepSliderControlProps = {
   onStepIndexChange: (index: number) => void;
   /** When true, uses w-fit instead of w-full for inline layout */
   inline?: boolean;
+  trailingAction?: React.ReactNode;
 };
 
 function niceInterval(raw: number): number {
@@ -75,6 +76,7 @@ export function StepSliderControl({
   stepIndex,
   onStepIndexChange,
   inline = false,
+  trailingAction,
 }: StepSliderControlProps) {
   const maxIndex = Math.max(steps.length - 1, 0);
   const activeStep = steps[stepIndex] ?? null;
@@ -84,9 +86,9 @@ export function StepSliderControl({
 
   if (inline) {
     return (
-      <div className="flex min-w-[420px] w-fit items-start gap-2 md:gap-3">
+      <div className="flex min-w-[420px] w-fit items-center gap-2 md:gap-3">
         <div className="flex min-w-[280px] max-w-[360px] flex-col">
-          <div className="flex h-9 items-center gap-1">
+          <div className="flex h-8 items-center gap-1">
             <span className="w-10 shrink-0 text-xs text-zinc-400">Step:</span>
             <Slider
               value={[stepIndex]}
@@ -97,7 +99,7 @@ export function StepSliderControl({
               className="w-full [&_[data-slot=slider-thumb]]:size-4 [&_[data-slot=slider-thumb]]:border-zinc-500 [&_[data-slot=slider-thumb]]:bg-black [&_[data-slot=slider-track]]:bg-zinc-200 [&_[data-slot=slider-range]]:bg-zinc-200"
             />
           </div>
-          <div className="-mt-1 flex items-center gap-1">
+          <div className="mt-0.5 flex items-center gap-1">
             <span className="w-10 shrink-0" aria-hidden />
             <div className="flex flex-1 justify-between px-1 text-[11px] text-zinc-500">
               {displayTicks.map((step) => (
@@ -137,6 +139,7 @@ export function StepSliderControl({
         >
           Jump to Latest
         </Button>
+        {trailingAction}
       </div>
     );
   }
@@ -197,6 +200,7 @@ export function StepSliderControl({
       >
         Jump to Latest
       </Button>
+      {trailingAction}
     </div>
   );
 }

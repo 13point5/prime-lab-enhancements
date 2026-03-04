@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { AgentationProvider } from "@/components/agentation-provider";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -30,6 +31,7 @@ export default function RootLayout({
         className="bg-black text-zinc-100 font-sans antialiased"
       >
         {children}
+        <AgentationProvider />
       </body>
     </html>
   );
