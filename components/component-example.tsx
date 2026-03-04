@@ -65,14 +65,37 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { DataTable } from "@/components/data-table"
+import { columns, type Payment } from "@/components/data-table"
 import { PlusIcon, BluetoothIcon, MoreVerticalIcon, FileIcon, FolderIcon, FolderOpenIcon, FileCodeIcon, MoreHorizontalIcon, FolderSearchIcon, SaveIcon, DownloadIcon, EyeIcon, LayoutIcon, PaletteIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, CreditCardIcon, SettingsIcon, KeyboardIcon, LanguagesIcon, BellIcon, MailIcon, ShieldIcon, HelpCircleIcon, FileTextIcon, LogOutIcon } from "lucide-react"
+
+const payments: Payment[] = [
+  { id: "728ed52f", amount: 100, status: "pending", email: "m@example.com" },
+  { id: "489e1d42", amount: 125, status: "processing", email: "example@gmail.com" },
+  { id: "a3f2b1c0", amount: 250, status: "success", email: "user@company.org" },
+  { id: "d4e5f6a7", amount: 75, status: "failed", email: "test@test.com" },
+  { id: "b8c9d0e1", amount: 500, status: "success", email: "admin@prime.io" },
+]
 
 export function ComponentExample() {
   return (
     <ExampleWrapper>
       <CardExample />
       <FormExample />
+      <DataTableExample />
     </ExampleWrapper>
+  )
+}
+
+function DataTableExample() {
+  return (
+    <Example
+      title="Data Table"
+      containerClassName="md:col-span-2 max-w-none"
+      className="w-full"
+    >
+      <DataTable columns={columns} data={payments} />
+    </Example>
   )
 }
 
