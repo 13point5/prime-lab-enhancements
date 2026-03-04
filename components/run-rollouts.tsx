@@ -306,29 +306,17 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         </header>
 
         <Tabs defaultValue="data" className="w-full gap-4">
-          <TabsList className="h-11 bg-zinc-800/70 p-1">
-            <TabsTrigger
-              value="overview"
-              className="text-xs data-active:bg-black data-active:text-zinc-100 md:text-sm"
-            >
+          <TabsList className="h-9 bg-zinc-800 p-1">
+            <TabsTrigger value="overview" className="text-xs md:text-sm">
               Overview
             </TabsTrigger>
-            <TabsTrigger
-              value="data"
-              className="text-xs data-active:bg-black data-active:text-zinc-100 md:text-sm"
-            >
+            <TabsTrigger value="data" className="text-xs md:text-sm">
               Data
             </TabsTrigger>
-            <TabsTrigger
-              value="system"
-              className="text-xs data-active:bg-black data-active:text-zinc-100 md:text-sm"
-            >
+            <TabsTrigger value="system" className="text-xs md:text-sm">
               System
             </TabsTrigger>
-            <TabsTrigger
-              value="resources"
-              className="text-xs data-active:bg-black data-active:text-zinc-100 md:text-sm"
-            >
+            <TabsTrigger value="resources" className="text-xs md:text-sm">
               Resources
             </TabsTrigger>
           </TabsList>
@@ -367,77 +355,93 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               />
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-              <Table className="min-w-[1400px] table-fixed">
-                <TableHeader className="bg-zinc-950">
-                  <TableRow className="border-zinc-800 hover:bg-zinc-950">
-                    <TableHead className="w-20 text-sm text-zinc-400">
+            <div
+              className="overflow-auto rounded-md bg-[#141414]"
+              style={{ border: "1px solid rgba(255, 255, 255, 0.05)" }}
+            >
+              <Table className="min-w-[1230px] table-fixed text-sm">
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-44" />
+                  <col className="w-[350px]" />
+                  <col className="w-56" />
+                  <col className="w-32" />
+                  {rewardColumns.map((col) => (
+                    <col key={col} className="w-40" />
+                  ))}
+                  <col className="w-32" />
+                </colgroup>
+                <TableHeader>
+                  <TableRow className="border-b border-white/5 hover:bg-transparent">
+                    <TableHead className="h-9 w-10 min-w-10 px-3 py-2 font-medium text-zinc-400">
                       id
                     </TableHead>
-                    <TableHead className="w-44 text-sm text-zinc-400">
+                    <TableHead className="h-9 w-44 px-3 py-2 font-medium text-zinc-400">
                       task
                     </TableHead>
-                    <TableHead className="w-[520px] text-sm text-zinc-400">
+                    <TableHead className="h-9 w-[350px] px-3 py-2 font-medium text-zinc-400">
                       prompt
                     </TableHead>
-                    <TableHead className="w-56 text-sm text-zinc-400">
+                    <TableHead className="h-9 w-56 px-3 py-2 font-medium text-zinc-400">
                       info
                     </TableHead>
-                    <TableHead className="w-32 text-right text-sm text-zinc-400">
+                    <TableHead className="h-9 w-32 px-3 py-2 text-right font-medium text-zinc-400">
                       reward
                     </TableHead>
                     {rewardColumns.map((column) => (
                       <TableHead
                         key={column}
-                        className="w-40 text-right text-sm text-zinc-400"
+                        className="h-9 w-40 px-3 py-2 text-right font-medium text-zinc-400"
                       >
                         {column}
                       </TableHead>
                     ))}
-                    <TableHead className="w-32 text-right text-sm text-zinc-400">
+                    <TableHead className="h-9 w-32 px-3 py-2 text-right font-medium text-zinc-400">
                       num_turns
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((row) => (
+                  {rows.map((row, index) => (
                     <TableRow
                       key={row.key}
-                      className="border-zinc-900 hover:bg-zinc-900/40"
+                      className={`border-b border-white/5 transition-colors hover:!bg-white/[0.08] ${
+                        index % 2 === 0 ? "bg-white/[0.02]" : ""
+                      }`}
                     >
-                      <TableCell className="text-sm text-zinc-300">
+                      <TableCell className="max-w-10 truncate px-3 py-2 text-sm text-zinc-300">
                         {row.id}
                       </TableCell>
-                      <TableCell className="max-w-44 truncate font-mono text-sm text-zinc-400">
+                      <TableCell className="max-w-44 truncate px-3 py-2 font-mono text-xs text-zinc-400">
                         {row.task}
                       </TableCell>
-                      <TableCell className="max-w-[520px] truncate font-mono text-sm text-zinc-200">
+                      <TableCell className="max-w-[350px] truncate px-3 py-2 font-mono text-xs text-zinc-200">
                         {row.prompt || "-"}
                       </TableCell>
-                      <TableCell className="max-w-56 truncate font-mono text-xs text-zinc-500">
+                      <TableCell className="max-w-56 truncate px-3 py-2 font-mono text-xs text-zinc-500">
                         {row.info}
                       </TableCell>
-                      <TableCell className="text-right text-sm font-semibold text-emerald-400">
+                      <TableCell className="px-3 py-2 text-right text-sm font-semibold text-emerald-400">
                         {displayNumber(row.reward)}
                       </TableCell>
                       {rewardColumns.map((column) => (
                         <TableCell
                           key={column}
-                          className="text-right text-sm text-zinc-300"
+                          className="px-3 py-2 text-right text-sm text-zinc-300"
                         >
                           {displayNumber(toNumber(row.metrics[column]))}
                         </TableCell>
                       ))}
-                      <TableCell className="text-right text-sm text-zinc-300">
+                      <TableCell className="px-3 py-2 text-right text-sm text-zinc-300">
                         {displayNumber(row.numTurns)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {rows.length === 0 ? (
-                    <TableRow className="border-zinc-900">
+                    <TableRow className="border-b border-white/5">
                       <TableCell
                         colSpan={6 + rewardColumns.length}
-                        className="py-8 text-center text-base text-zinc-500"
+                        className="py-8 text-center text-sm text-zinc-500"
                       >
                         No rollout data available for this step.
                       </TableCell>
