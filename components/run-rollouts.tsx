@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Info } from "lucide-react";
+import { Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StepSliderControl } from "@/components/step-slider-control";
@@ -281,15 +281,24 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
 
   return (
     <main className="min-h-screen bg-black text-zinc-100">
-      <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-6">
-        <header className="mb-5 flex flex-col gap-4 border-b border-zinc-800 pb-5 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
-              {runName}
-            </h1>
-            <p className="text-xs text-zinc-400 md:text-sm">ID: {runId}</p>
-          </div>
-          <div className="flex items-center gap-2">
+      <header className="border-b border-zinc-800">
+        <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold tracking-tight md:text-xl">
+                {runName}
+              </h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                onClick={() => void navigator.clipboard.writeText(runId)}
+                title="Copy run ID"
+              >
+                <Copy className="size-3.5" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
             <Button
               variant="secondary"
               className="bg-zinc-800 text-xs text-zinc-100 hover:bg-zinc-700 md:text-sm"
@@ -302,11 +311,15 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
             >
               View trained LoRA
             </Button>
+            </div>
           </div>
-        </header>
+        </div>
+      </header>
 
+      <div className="mx-auto w-full max-w-[2100px] px-3 pb-4 pt-5 md:px-6 md:pb-6 md:pt-6">
         <Tabs defaultValue="data" className="w-full gap-4">
-          <TabsList className="h-9 bg-zinc-800 p-1">
+          <div className="flex flex-row flex-nowrap items-start justify-between gap-4">
+            <TabsList className="h-9 shrink-0 bg-zinc-800 p-1">
             <TabsTrigger value="overview" className="text-xs md:text-sm">
               Overview
             </TabsTrigger>
@@ -320,6 +333,13 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               Resources
             </TabsTrigger>
           </TabsList>
+            <StepSliderControl
+              steps={steps}
+              stepIndex={stepIndex}
+              onStepIndexChange={handleStepIndexChange}
+              inline
+            />
+          </div>
 
           <TabsContent value="overview">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-zinc-400">
@@ -340,21 +360,6 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
           </TabsContent>
 
           <TabsContent value="data" className="space-y-4">
-            <div className="flex items-center justify-between gap-4 py-2">
-              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-zinc-300">
-                <span className="whitespace-nowrap text-zinc-300">
-                  {rows.length} rollouts for step {activeStep ?? "-"}
-                </span>
-                <Info className="size-4 shrink-0 text-zinc-500" />
-              </div>
-
-              <StepSliderControl
-                steps={steps}
-                stepIndex={stepIndex}
-                onStepIndexChange={handleStepIndexChange}
-              />
-            </div>
-
             <div
               className="overflow-auto rounded-md bg-[#141414]"
               style={{ border: "1px solid rgba(255, 255, 255, 0.05)" }}
