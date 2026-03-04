@@ -1,21 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, Copy, Link2, MoreVertical } from "lucide-react";
+import { Check, Copy, Link2, MoreVertical } from "lucide-react";
 
+import { RolloutGridView } from "@/components/rollouts/rollout-grid-view";
+import { RolloutSplitView } from "@/components/rollouts/rollout-split-view";
+import { RolloutTableView } from "@/components/rollouts/rollout-table-view";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { StepSliderControl } from "@/components/step-slider-control";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 type JsonObject = Record<string, unknown>;
 
@@ -91,6 +86,8 @@ type SelectedRolloutEntry = {
   step: number | null;
   row: Row;
 };
+
+type DataViewMode = "table" | "split" | "grid";
 
 function getRolloutSelectionKey(runId: string, step: number | null, rowKey: string): string {
   return `${runId}::${step ?? "na"}::${rowKey}`;
@@ -397,6 +394,8 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     Record<string, SelectedRolloutEntry>
   >({});
   const [copyStatus, setCopyStatus] = React.useState<"idle" | "copied" | "error">("idle");
+  const [dataViewMode, setDataViewMode] = React.useState<DataViewMode>("table");
+  const [activeTab, setActiveTab] = React.useState("data");
 
   const selectedCount = React.useMemo(
     () => Object.keys(selectedRollouts).length,
@@ -659,8 +658,21 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     return () => window.clearTimeout(timeoutId);
   }, [copyStatus]);
 
+  React.useEffect(() => {
+    if (dataViewMode !== "table" && isDialogOpen) {
+      setDialogOpen(false);
+    }
+  }, [dataViewMode, isDialogOpen]);
+
+  const isSplitViewportMode = activeTab === "data" && dataViewMode === "split";
+
   return (
-    <main className="min-h-screen bg-black text-zinc-100">
+    <main
+      className={cn(
+        "bg-black text-zinc-100",
+        isSplitViewportMode ? "flex h-screen flex-col overflow-hidden" : "min-h-screen",
+      )}
+    >
       <header className="border-b border-zinc-800">
         <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -705,22 +717,71 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[2100px] px-3 pb-4 pt-5 md:px-6 md:pb-6 md:pt-6">
-        <Tabs defaultValue="data" className="w-full gap-4">
-          <TabsList className="h-9 w-fit shrink-0 bg-zinc-800 p-1">
-            <TabsTrigger value="overview" className="text-xs md:text-sm">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="data" className="text-xs md:text-sm">
-              Data
-            </TabsTrigger>
-            <TabsTrigger value="system" className="text-xs md:text-sm">
-              System
-            </TabsTrigger>
-            <TabsTrigger value="resources" className="text-xs md:text-sm">
-              Resources
-            </TabsTrigger>
-          </TabsList>
+      <div
+        className={cn(
+          "mx-auto w-full max-w-[2100px] px-3 pb-4 pt-5 md:px-6 md:pb-6 md:pt-6",
+          isSplitViewportMode && "flex min-h-0 flex-1 flex-col overflow-hidden",
+        )}
+      >
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className={cn("w-full gap-4", isSplitViewportMode && "flex h-full min-h-0 flex-col")}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TabsList className="h-9 w-fit shrink-0 bg-zinc-800 p-1">
+              <TabsTrigger value="overview" className="text-xs md:text-sm">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="data" className="text-xs md:text-sm">
+                Data
+              </TabsTrigger>
+              <TabsTrigger value="system" className="text-xs md:text-sm">
+                System
+              </TabsTrigger>
+              <TabsTrigger value="resources" className="text-xs md:text-sm">
+                Resources
+              </TabsTrigger>
+            </TabsList>
+
+            <div
+              role="group"
+              className="flex items-center rounded-lg border border-zinc-700 bg-zinc-900 p-0.5"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`rounded-md border-0 px-3 text-xs md:text-sm ${
+                  dataViewMode === "table"
+                    ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                }`}
+                onClick={() => setDataViewMode("table")}
+              >
+                Table
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`rounded-md border-0 px-3 text-xs md:text-sm ${
+                  dataViewMode === "split"
+                    ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                }`}
+                onClick={() => setDataViewMode("split")}
+              >
+                Split
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-md border-0 px-3 text-xs text-zinc-500 hover:bg-zinc-900 hover:text-zinc-500 md:text-sm"
+                disabled
+              >
+                Grid
+              </Button>
+            </div>
+          </div>
 
           <TabsContent value="overview">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-zinc-400">
@@ -740,141 +801,46 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
             </div>
           </TabsContent>
 
-          <TabsContent value="data" className="space-y-4">
-            <div
-              className="overflow-auto rounded-md bg-[#141414]"
-              style={{ border: "1px solid rgba(255, 255, 255, 0.05)" }}
-            >
-              <Table className="min-w-[1230px] table-fixed border-separate border-spacing-0 text-sm">
-                <colgroup>
-                  <col className="w-10" />
-                  <col className="w-10" />
-                  <col className="w-44" />
-                  <col className="w-[350px]" />
-                  <col className="w-56" />
-                  <col className="w-32" />
-                  {rewardColumns.map((col) => (
-                    <col key={col} className="w-40" />
-                  ))}
-                  <col className="w-32" />
-                </colgroup>
-                <TableHeader className="[&_th]:border-b [&_th]:border-b-white/10">
-                  <TableRow className="border-b-0 hover:bg-transparent">
-                    <TableHead className="h-9 w-10 min-w-10 px-3 py-2 font-medium text-zinc-400">
-                      <Checkbox
-                        checked={
-                          visibleSelection.allSelected
-                            ? true
-                            : visibleSelection.selected > 0
-                              ? "indeterminate"
-                              : false
-                        }
-                        onCheckedChange={(checked) => toggleVisibleSelection(checked === true)}
-                        aria-label="Select visible rollouts"
-                        onClick={(event) => event.stopPropagation()}
-                      />
-                    </TableHead>
-                    <TableHead className="h-9 w-10 min-w-10 px-3 py-2 font-medium text-zinc-400">
-                      id
-                    </TableHead>
-                    <TableHead className="h-9 w-44 px-3 py-2 font-medium text-zinc-400">
-                      task
-                    </TableHead>
-                    <TableHead className="h-9 w-[350px] px-3 py-2 font-medium text-zinc-400">
-                      prompt
-                    </TableHead>
-                    <TableHead className="h-9 w-56 px-3 py-2 font-medium text-zinc-400">
-                      info
-                    </TableHead>
-                    <TableHead className="h-9 w-32 px-3 py-2 text-right font-medium text-zinc-400">
-                      reward
-                    </TableHead>
-                    {rewardColumns.map((column) => (
-                      <TableHead
-                        key={column}
-                        className="h-9 w-40 px-3 py-2 text-right font-medium text-zinc-400"
-                      >
-                        {column}
-                      </TableHead>
-                    ))}
-                    <TableHead className="h-9 w-32 px-3 py-2 text-right font-medium text-zinc-400">
-                      num_turns
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="[&_tr:last-child_td]:border-b-0">
-                  {rows.map((row, index) => (
-                    <TableRow
-                      key={row.key}
-                      className={`cursor-pointer transition-colors border-b-0 hover:!bg-white/[0.08] ${
-                        index % 2 === 0 ? "bg-white/[0.02]" : ""
-                      } ${selectedRollouts[row.selectionKey] ? "bg-violet-500/[0.12]" : ""}`}
-                      onClick={() => {
-                        setDialogRolloutIndex(index);
-                        setDialogOpen(true);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setDialogRolloutIndex(index);
-                          setDialogOpen(true);
-                        }
-                      }}
-                      tabIndex={0}
-                    >
-                      <TableCell className="max-w-10 border-b border-white/5 px-3 py-2">
-                        <Checkbox
-                          checked={Boolean(selectedRollouts[row.selectionKey])}
-                          onCheckedChange={(checked) =>
-                            toggleRolloutSelection(row, checked === true)
-                          }
-                          aria-label={`Select rollout ${row.id}`}
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                        />
-                      </TableCell>
-                      <TableCell className="max-w-10 truncate border-b border-white/5 px-3 py-2 text-sm text-zinc-300">
-                        {row.id}
-                      </TableCell>
-                      <TableCell className="max-w-44 truncate border-b border-white/5 px-3 py-2 font-mono text-xs text-zinc-400">
-                        {row.task}
-                      </TableCell>
-                      <TableCell className="max-w-[350px] truncate border-b border-white/5 px-3 py-2 font-mono text-xs text-zinc-200">
-                        {row.prompt || "-"}
-                      </TableCell>
-                      <TableCell className="max-w-56 truncate border-b border-white/5 px-3 py-2 font-mono text-xs text-zinc-500">
-                        {row.info}
-                      </TableCell>
-                      <TableCell className="border-b border-white/5 px-3 py-2 text-right text-sm font-semibold text-emerald-400">
-                        {displayNumber(row.reward)}
-                      </TableCell>
-                      {rewardColumns.map((column) => (
-                        <TableCell
-                          key={column}
-                          className="border-b border-white/5 px-3 py-2 text-right text-sm text-zinc-300"
-                        >
-                          {displayNumber(toNumber(row.metrics[column]))}
-                        </TableCell>
-                      ))}
-                      <TableCell className="border-b border-white/5 px-3 py-2 text-right text-sm text-zinc-300">
-                        {displayNumber(row.numTurns)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {rows.length === 0 ? (
-                    <TableRow className="border-b border-white/5">
-                      <TableCell
-                        colSpan={7 + rewardColumns.length}
-                        className="py-8 text-center text-sm text-zinc-500"
-                      >
-                        No rollout data available for this step.
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex items-start justify-end gap-4">
+          <TabsContent
+            value="data"
+            className={cn("space-y-4", isSplitViewportMode && "flex min-h-0 flex-1 flex-col")}
+          >
+            {dataViewMode === "table" ? (
+              <RolloutTableView
+                rows={rows}
+                rewardColumns={rewardColumns}
+                selectedRowKeys={selectedRollouts}
+                visibleSelection={visibleSelection}
+                onToggleVisibleSelection={toggleVisibleSelection}
+                onToggleRowSelection={toggleRolloutSelection}
+                onActivateRow={(index) => {
+                  setDialogRolloutIndex(index);
+                  setDialogOpen(true);
+                }}
+                formatNumber={displayNumber}
+              />
+            ) : dataViewMode === "split" ? (
+              <RolloutSplitView
+                rows={rows}
+                activeIndex={dialogRolloutIndex}
+                selectedRowKeys={selectedRollouts}
+                onActiveIndexChange={setDialogRolloutIndex}
+                onToggleRowSelection={toggleRolloutSelection}
+                selectedMessages={selectedMessages}
+                expandedMessageKeys={expandedMessageKeys}
+                onToggleMessage={toggleMessage}
+                onCollapseAll={collapseAll}
+                onExpandAll={expandAll}
+                formatNumber={displayNumber}
+                className={cn(
+                  "overflow-hidden rounded-md border border-white/10 bg-[#141414]",
+                  isSplitViewportMode ? "flex-1 min-h-0" : "min-h-[600px]",
+                )}
+              />
+            ) : (
+              <RolloutGridView />
+            )}
+            <div className={cn("flex items-start justify-end gap-4", isSplitViewportMode && "shrink-0")}>
               <StepSliderControl
                 steps={steps}
                 stepIndex={stepIndex}
@@ -916,126 +882,20 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
           showCloseButton
         >
           <DialogTitle className="sr-only">Rollout Conversation</DialogTitle>
-          <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="flex min-h-0 flex-col border-r border-white/10">
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                <h3 className="text-sm font-semibold text-zinc-100">Rollouts</h3>
-                <p className="text-xs text-zinc-500">
-                  {rows.length > 0
-                    ? `${Math.min(dialogRolloutIndex + 1, rows.length)}/${rows.length}`
-                    : "0/0"}
-                </p>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                <div className="space-y-1.5">
-                  {rows.map((row, index) => {
-                    const isActive = index === dialogRolloutIndex;
-                    const isChecked = Boolean(selectedRollouts[row.selectionKey]);
-                    return (
-                      <div
-                        key={`${row.key}:dialog-item`}
-                        className={`w-full rounded-md border px-2 py-2 transition-colors ${
-                          isActive
-                            ? "border-white/15 bg-black/80"
-                            : "border-transparent bg-white/[0.02] hover:bg-white/[0.06]"
-                        } ${isChecked ? "ring-1 ring-violet-500/60" : ""}`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className="pt-0.5">
-                            <Checkbox
-                              checked={isChecked}
-                              onCheckedChange={(checked) =>
-                                toggleRolloutSelection(row, checked === true)
-                              }
-                              aria-label={`Select rollout ${row.id} in dialog`}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            className="min-w-0 flex-1 text-left"
-                            onClick={() => setDialogRolloutIndex(index)}
-                          >
-                            <div className="mb-1 flex items-center justify-between gap-2">
-                              <span className="text-xs text-zinc-400">#{row.id}</span>
-                              <span className="text-sm font-semibold text-emerald-400">
-                                {displayNumber(row.reward)}
-                              </span>
-                            </div>
-                            <p className="line-clamp-2 text-xs text-zinc-300">
-                              {row.prompt || "(no prompt text)"}
-                            </p>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </aside>
-
-            <section className="flex min-h-0 flex-col">
-              <div className="flex items-center gap-4 border-b border-white/10 px-4 py-3">
-                <h3 className="text-sm font-semibold text-zinc-100">Conversation History</h3>
-                <div className="flex items-center gap-3 text-xs text-zinc-400">
-                  <button
-                    type="button"
-                    className="hover:text-zinc-100"
-                    onClick={collapseAll}
-                  >
-                    Collapse All
-                  </button>
-                  <span className="text-zinc-600">|</span>
-                  <button
-                    type="button"
-                    className="hover:text-zinc-100"
-                    onClick={expandAll}
-                  >
-                    Expand All
-                  </button>
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3 pt-2">
-                {selectedMessages.length > 0 ? (
-                  selectedMessages.map((message) => {
-                    const isExpanded = expandedMessageKeys.includes(message.key);
-                    return (
-                      <div
-                        key={message.key}
-                        className="overflow-hidden rounded-md border border-white/10 bg-black/50"
-                      >
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left"
-                          onClick={() => toggleMessage(message.key)}
-                        >
-                          <span className="text-xs font-semibold leading-none lowercase tracking-wide text-zinc-200">
-                            {message.role}
-                          </span>
-                          <ChevronDown
-                            className={`size-3.5 text-zinc-500 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                        {isExpanded ? (
-                          <div className="border-t border-white/10 px-4 py-2.5">
-                            <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-zinc-200">
-                              {message.content}
-                            </pre>
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="rounded-md border border-white/10 bg-black/40 px-4 py-6 text-sm text-zinc-500">
-                    No messages found for this rollout.
-                  </div>
-                )}
-              </div>
-            </section>
-          </div>
+          <RolloutSplitView
+            rows={rows}
+            activeIndex={dialogRolloutIndex}
+            selectedRowKeys={selectedRollouts}
+            onActiveIndexChange={setDialogRolloutIndex}
+            onToggleRowSelection={toggleRolloutSelection}
+            selectedMessages={selectedMessages}
+            expandedMessageKeys={expandedMessageKeys}
+            onToggleMessage={toggleMessage}
+            onCollapseAll={collapseAll}
+            onExpandAll={expandAll}
+            formatNumber={displayNumber}
+            className="h-full min-h-0"
+          />
         </DialogContent>
       </Dialog>
     </main>
