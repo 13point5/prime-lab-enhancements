@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, Grid3x3, Link2, MoreVertical, PanelsTopLeft, Table2 } from "lucide-react";
+import { Check, Columns2, Copy, Grid3x3, Link2, MoreVertical, Table2 } from "lucide-react";
 
 import { RolloutGridView } from "@/components/rollouts/rollout-grid-view";
 import { RolloutSplitView } from "@/components/rollouts/rollout-split-view";
@@ -71,6 +71,7 @@ type Row = {
   reward: number | null;
   metrics: JsonObject;
   numTurns: number | null;
+  lastMessage: string;
   sample: RawSample;
 };
 
@@ -370,6 +371,10 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
       const idValue = sample.problem_id ?? sample.sample_id ?? index;
       const rowKey = `${activeStep ?? "na"}:${sample.problem_id ?? "na"}:${sample.sample_id ?? "na"}:${index}`;
       const selectionKey = getRolloutSelectionKey(runId, activeStep, rowKey);
+      const messages = extractConversationMessages(sample);
+      const lastMessage = messages.length
+        ? messages[messages.length - 1]?.content ?? ""
+        : "";
 
       return {
         selectionKey,
@@ -382,6 +387,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         reward: toNumber(sample.reward),
         metrics,
         numTurns,
+        lastMessage,
         sample,
       };
     });
@@ -659,18 +665,19 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
   }, [copyStatus]);
 
   React.useEffect(() => {
-    if (dataViewMode !== "table" && isDialogOpen) {
+    if (dataViewMode === "split" && isDialogOpen) {
       setDialogOpen(false);
     }
   }, [dataViewMode, isDialogOpen]);
 
-  const isSplitViewportMode = activeTab === "data" && dataViewMode === "split";
+  const isLockedDataViewportMode =
+    activeTab === "data" && (dataViewMode === "split" || dataViewMode === "grid");
 
   return (
     <main
       className={cn(
         "bg-black text-zinc-100",
-        isSplitViewportMode ? "flex h-screen flex-col overflow-hidden" : "min-h-screen",
+        isLockedDataViewportMode ? "flex h-screen flex-col overflow-hidden" : "min-h-screen",
       )}
     >
       <header className="border-b border-zinc-800">
@@ -720,13 +727,13 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
       <div
         className={cn(
           "mx-auto w-full max-w-[2100px] px-3 pb-4 pt-5 md:px-6 md:pb-6 md:pt-6",
-          isSplitViewportMode && "flex min-h-0 flex-1 flex-col overflow-hidden",
+          isLockedDataViewportMode && "flex min-h-0 flex-1 flex-col overflow-hidden",
         )}
       >
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className={cn("w-full gap-4", isSplitViewportMode && "flex h-full min-h-0 flex-col")}
+          className={cn("w-full gap-4", isLockedDataViewportMode && "flex h-full min-h-0 flex-col")}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <TabsList className="h-9 w-fit shrink-0 bg-zinc-800 p-1">
@@ -775,15 +782,19 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                   aria-label="Split view"
                   title="Split view"
                 >
-                  <PanelsTopLeft className="size-4" />
+                  <Columns2 className="size-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="rounded-none border-0 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-500"
-                  disabled
-                  aria-label="Grid view (coming soon)"
-                  title="Grid view (coming soon)"
+                  className={`rounded-none border-0 ${
+                    dataViewMode === "grid"
+                      ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  }`}
+                  onClick={() => setDataViewMode("grid")}
+                  aria-label="Grid view"
+                  title="Grid view"
                 >
                   <Grid3x3 className="size-4" />
                 </Button>
@@ -835,7 +846,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
 
           <TabsContent
             value="data"
-            className={cn("space-y-4", isSplitViewportMode && "flex min-h-0 flex-1 flex-col")}
+            className={cn("space-y-4", isLockedDataViewportMode && "flex min-h-0 flex-1 flex-col")}
           >
             {dataViewMode === "table" ? (
               <RolloutTableView
@@ -866,13 +877,23 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                 formatNumber={displayNumber}
                 className={cn(
                   "overflow-hidden rounded-md border border-white/10 bg-[#141414]",
-                  isSplitViewportMode ? "flex-1 min-h-0" : "min-h-[600px]",
+                  isLockedDataViewportMode ? "flex-1 min-h-0" : "min-h-[600px]",
                 )}
               />
             ) : (
-              <RolloutGridView />
+              <RolloutGridView
+                rows={rows}
+                selectedRowKeys={selectedRollouts}
+                onToggleRowSelection={toggleRolloutSelection}
+                onActivateRow={(index) => {
+                  setDialogRolloutIndex(index);
+                  setDialogOpen(true);
+                }}
+                formatNumber={displayNumber}
+                className={cn(isLockedDataViewportMode ? "flex-1 min-h-0" : "min-h-[600px]")}
+              />
             )}
-            <div className={cn("flex items-start justify-end gap-4", isSplitViewportMode && "shrink-0")}>
+            <div className={cn("flex items-start justify-end gap-4", isLockedDataViewportMode && "shrink-0")}>
               <StepSliderControl
                 steps={steps}
                 stepIndex={stepIndex}

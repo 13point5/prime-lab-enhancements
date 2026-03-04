@@ -26,12 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} dark`}>
-      <body
-        className="bg-black text-zinc-100 font-sans antialiased"
-      >
+    <html
+      lang="en"
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} dark`}
+    >
+      <body className="bg-black text-zinc-100 font-sans antialiased">
         {children}
-        <AgentationProvider />
+        {/* <AgentationProvider /> */}
       </body>
     </html>
   );
