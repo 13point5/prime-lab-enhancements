@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, Link2, MoreVertical } from "lucide-react";
+import { Check, Copy, Grid3x3, Link2, MoreVertical, PanelsTopLeft, Table2 } from "lucide-react";
 
 import { RolloutGridView } from "@/components/rollouts/rollout-grid-view";
 import { RolloutSplitView } from "@/components/rollouts/rollout-split-view";
@@ -744,42 +744,74 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               </TabsTrigger>
             </TabsList>
 
-            <div
-              role="group"
-              className="flex items-center rounded-lg border border-zinc-700 bg-zinc-900 p-0.5"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`rounded-md border-0 px-3 text-xs md:text-sm ${
-                  dataViewMode === "table"
-                    ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
-                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                }`}
-                onClick={() => setDataViewMode("table")}
+            <div className="flex items-center gap-2">
+              <div
+                role="group"
+                className="flex items-center overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900"
               >
-                Table
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`rounded-md border-0 px-3 text-xs md:text-sm ${
-                  dataViewMode === "split"
-                    ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
-                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                }`}
-                onClick={() => setDataViewMode("split")}
-              >
-                Split
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-md border-0 px-3 text-xs text-zinc-500 hover:bg-zinc-900 hover:text-zinc-500 md:text-sm"
-                disabled
-              >
-                Grid
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className={`rounded-none border-0 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-zinc-700 ${
+                    dataViewMode === "table"
+                      ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  }`}
+                  onClick={() => setDataViewMode("table")}
+                  aria-label="Table view"
+                  title="Table view"
+                >
+                  <Table2 className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className={`rounded-none border-0 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-zinc-700 ${
+                    dataViewMode === "split"
+                      ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  }`}
+                  onClick={() => setDataViewMode("split")}
+                  aria-label="Split view"
+                  title="Split view"
+                >
+                  <PanelsTopLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-none border-0 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-500"
+                  disabled
+                  aria-label="Grid view (coming soon)"
+                  title="Grid view (coming soon)"
+                >
+                  <Grid3x3 className="size-4" />
+                </Button>
+              </div>
+              {activeTab === "data" ? (
+                <Button
+                  variant="secondary"
+                  className="h-8 justify-start bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+                  onClick={() => void copySelectedRollouts()}
+                  disabled={selectedCount === 0}
+                >
+                  <span className="relative inline-flex items-center whitespace-nowrap text-left">
+                    <span className="invisible whitespace-nowrap">{`Copy Rollouts (${selectedCount})`}</span>
+                    <span className="absolute inset-0 inline-flex items-center gap-1.5 whitespace-nowrap">
+                      {copyStatus === "copied" ? (
+                        <>
+                          <span>Copied</span>
+                          <Check className="size-3.5 text-emerald-400" />
+                        </>
+                      ) : copyStatus === "error" ? (
+                        "Copy Failed"
+                      ) : (
+                        `Copy Rollouts (${selectedCount})`
+                      )}
+                    </span>
+                  </span>
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -846,30 +878,6 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                 stepIndex={stepIndex}
                 onStepIndexChange={handleStepIndexChange}
                 inline
-                trailingAction={
-                  <Button
-                    variant="secondary"
-                    className="h-8 justify-start bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
-                    onClick={() => void copySelectedRollouts()}
-                    disabled={selectedCount === 0}
-                  >
-                    <span className="relative inline-flex items-center whitespace-nowrap text-left">
-                        <span className="invisible whitespace-nowrap">{`Copy Rollouts (${selectedCount})`}</span>
-                      <span className="absolute inset-0 inline-flex items-center gap-1.5 whitespace-nowrap">
-                        {copyStatus === "copied" ? (
-                          <>
-                            <span>Copied</span>
-                            <Check className="size-3.5 text-emerald-400" />
-                          </>
-                        ) : copyStatus === "error" ? (
-                          "Copy Failed"
-                        ) : (
-                          `Copy Rollouts (${selectedCount})`
-                        )}
-                      </span>
-                    </span>
-                  </Button>
-                }
               />
             </div>
           </TabsContent>
