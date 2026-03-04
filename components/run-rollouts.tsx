@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Copy } from "lucide-react";
+import { ChevronDown, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StepSliderControl } from "@/components/step-slider-control";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -22,6 +23,8 @@ type RawSample = {
   sample_id?: number | string | null;
   task?: string | null;
   prompt?: unknown;
+  completion?: unknown;
+  answer?: unknown;
   info?: unknown;
   reward?: unknown;
   metrics?: unknown;
@@ -60,6 +63,13 @@ type Row = {
   reward: number | null;
   metrics: JsonObject;
   numTurns: number | null;
+  sample: RawSample;
+};
+
+type ConversationMessage = {
+  key: string;
+  role: string;
+  content: string;
 };
 
 function parseMaybeJson(value: unknown): unknown {
@@ -97,6 +107,23 @@ function toNumber(value: unknown): number | null {
 
 function compactText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function stringifyContent(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 function extractPromptText(promptRaw: unknown): string {
@@ -157,6 +184,50 @@ function extractInfoText(sample: RawSample): string {
 
 function extractMetrics(sample: RawSample): JsonObject {
   return toObject(sample.metrics) ?? {};
+}
+
+function extractConversationMessages(sample: RawSample): ConversationMessage[] {
+  const messages: ConversationMessage[] = [];
+
+  const appendMessages = (source: unknown, prefix: string) => {
+    const parsed = parseMaybeJson(source);
+    if (!Array.isArray(parsed)) {
+      return;
+    }
+
+    let localIndex = 0;
+    for (const item of parsed) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        continue;
+      }
+      const roleRaw = (item as JsonObject).role;
+      const contentRaw = (item as JsonObject).content;
+      const role = typeof roleRaw === "string" ? roleRaw : "message";
+      const content = stringifyContent(contentRaw);
+      messages.push({
+        key: `${prefix}:${localIndex}:${role}`,
+        role,
+        content,
+      });
+      localIndex += 1;
+    }
+  };
+
+  appendMessages(sample.prompt, "prompt");
+  appendMessages(sample.completion, "completion");
+
+  if (messages.length === 0) {
+    const answer = stringifyContent(sample.answer);
+    if (answer.trim() !== "") {
+      messages.push({
+        key: "answer:0:assistant",
+        role: "assistant",
+        content: answer,
+      });
+    }
+  }
+
+  return messages;
 }
 
 function displayNumber(value: number | null): string {
@@ -261,12 +332,17 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         reward: toNumber(sample.reward),
         metrics,
         numTurns,
+        sample,
       };
     });
   }, [activeSamples, activeStep]);
 
   const runName = run?.run_payload?.run?.name ?? run?.run_id ?? "No run loaded";
   const runId = run?.run_payload?.run?.id ?? run?.run_id ?? "-";
+  const [isDialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogRolloutIndex, setDialogRolloutIndex] = React.useState(0);
+  const [expandedMessageKeys, setExpandedMessageKeys] = React.useState<string[]>([]);
+
   const handleStepIndexChange = React.useCallback(
     (nextIndex: number) => {
       if (steps.length === 0) {
@@ -278,6 +354,47 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     },
     [steps.length],
   );
+
+  const selectedRollout =
+    rows.length > 0
+      ? rows[Math.min(Math.max(dialogRolloutIndex, 0), rows.length - 1)]
+      : null;
+
+  const selectedMessages = React.useMemo(
+    () => (selectedRollout ? extractConversationMessages(selectedRollout.sample) : []),
+    [selectedRollout],
+  );
+
+  React.useEffect(() => {
+    if (dialogRolloutIndex >= rows.length) {
+      setDialogRolloutIndex(0);
+    }
+  }, [dialogRolloutIndex, rows.length]);
+
+  React.useEffect(() => {
+    const lastMessageKey =
+      selectedMessages.length > 0
+        ? selectedMessages[selectedMessages.length - 1]?.key
+        : undefined;
+    setExpandedMessageKeys(lastMessageKey ? [lastMessageKey] : []);
+  }, [selectedRollout?.key, selectedMessages]);
+
+  const toggleMessage = React.useCallback((key: string) => {
+    setExpandedMessageKeys((current) => {
+      if (current.includes(key)) {
+        return current.filter((item) => item !== key);
+      }
+      return [...current, key];
+    });
+  }, []);
+
+  const collapseAll = React.useCallback(() => {
+    setExpandedMessageKeys([]);
+  }, []);
+
+  const expandAll = React.useCallback(() => {
+    setExpandedMessageKeys(selectedMessages.map((message) => message.key));
+  }, [selectedMessages]);
 
   return (
     <main className="min-h-screen bg-black text-zinc-100">
@@ -410,9 +527,21 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                   {rows.map((row, index) => (
                     <TableRow
                       key={row.key}
-                      className={`border-b border-white/5 transition-colors hover:!bg-white/[0.08] ${
+                      className={`cursor-pointer border-b border-white/5 transition-colors hover:!bg-white/[0.08] ${
                         index % 2 === 0 ? "bg-white/[0.02]" : ""
                       }`}
+                      onClick={() => {
+                        setDialogRolloutIndex(index);
+                        setDialogOpen(true);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setDialogRolloutIndex(index);
+                          setDialogOpen(true);
+                        }
+                      }}
+                      tabIndex={0}
                     >
                       <TableCell className="max-w-10 truncate px-3 py-2 text-sm text-zinc-300">
                         {row.id}
@@ -458,6 +587,119 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent
+          className="h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] gap-0 overflow-hidden border border-white/10 bg-[#141414] p-0 text-zinc-100 sm:max-w-[calc(100vw-2rem)]"
+          showCloseButton
+        >
+          <DialogTitle className="sr-only">Rollout Conversation</DialogTitle>
+          <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="flex min-h-0 flex-col border-r border-white/10">
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                <h3 className="text-sm font-semibold text-zinc-100">Rollouts</h3>
+                <p className="text-xs text-zinc-500">
+                  {rows.length > 0
+                    ? `${Math.min(dialogRolloutIndex + 1, rows.length)}/${rows.length}`
+                    : "0/0"}
+                </p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                <div className="space-y-1.5">
+                  {rows.map((row, index) => {
+                    const selected = index === dialogRolloutIndex;
+                    return (
+                      <button
+                        key={`${row.key}:dialog-item`}
+                        type="button"
+                        className={`w-full rounded-md border px-2 py-2 text-left transition-colors ${
+                          selected
+                            ? "border-transparent bg-black/80"
+                            : "border-transparent bg-white/[0.02] hover:bg-white/[0.06]"
+                        }`}
+                        onClick={() => setDialogRolloutIndex(index)}
+                      >
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="text-xs text-zinc-400">#{row.id}</span>
+                          <span className="text-sm font-semibold text-emerald-400">
+                            {displayNumber(row.reward)}
+                          </span>
+                        </div>
+                        <p className="line-clamp-2 text-xs text-zinc-300">
+                          {row.prompt || "(no prompt text)"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </aside>
+
+            <section className="flex min-h-0 flex-col">
+              <div className="flex items-center gap-4 border-b border-white/10 px-4 py-3">
+                <h3 className="text-sm font-semibold text-zinc-100">Conversation History</h3>
+                <div className="flex items-center gap-3 text-xs text-zinc-400">
+                  <button
+                    type="button"
+                    className="hover:text-zinc-100"
+                    onClick={collapseAll}
+                  >
+                    Collapse All
+                  </button>
+                  <span className="text-zinc-600">|</span>
+                  <button
+                    type="button"
+                    className="hover:text-zinc-100"
+                    onClick={expandAll}
+                  >
+                    Expand All
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3 pt-2">
+                {selectedMessages.length > 0 ? (
+                  selectedMessages.map((message) => {
+                    const isExpanded = expandedMessageKeys.includes(message.key);
+                    return (
+                      <div
+                        key={message.key}
+                        className="overflow-hidden rounded-md border border-white/10 bg-black/50"
+                      >
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left"
+                          onClick={() => toggleMessage(message.key)}
+                        >
+                          <span className="text-xs font-semibold leading-none lowercase tracking-wide text-zinc-200">
+                            {message.role}
+                          </span>
+                          <ChevronDown
+                            className={`size-3.5 text-zinc-500 transition-transform ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                        {isExpanded ? (
+                          <div className="border-t border-white/10 px-4 py-2.5">
+                            <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-zinc-200">
+                              {message.content}
+                            </pre>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-md border border-white/10 bg-black/40 px-4 py-6 text-sm text-zinc-500">
+                    No messages found for this rollout.
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
