@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Check, Columns2, Copy, Grid3x3, Link2, MoreVertical, Table2 } from "lucide-react";
+import { Check, Columns2, Copy, Grid3x3, Link2, MoreVertical, RefreshCw, Table2 } from "lucide-react";
 
+import { RunOverviewTab } from "@/components/overview-tab";
 import { RolloutGridView } from "@/components/rollouts/rollout-grid-view";
 import { RolloutSplitView } from "@/components/rollouts/rollout-split-view";
 import { RolloutTableView } from "@/components/rollouts/rollout-table-view";
@@ -35,6 +36,7 @@ type RawStepPayload = {
 
 type RunEnvironment = {
   id?: string;
+  version?: string;
 };
 
 type RunPayloadRun = {
@@ -42,8 +44,25 @@ type RunPayloadRun = {
   name?: string;
   status?: string;
   base_model?: string;
+  duration_s?: number | string;
   max_steps?: number | string;
+  rollouts_per_example?: number | string;
+  seq_len?: number | string;
+  max_tokens?: number | string;
+  batch_size?: number | string;
+  learning_rate?: number | string;
+  lora_alpha?: number | string;
+  val_config?: unknown;
+  run_config?: unknown;
+  eval_config?: unknown;
+  buffer_config?: unknown;
   environments?: RunEnvironment[];
+  started_at?: string;
+  completed_at?: string;
+  created_at?: string;
+  wandb_entity?: string;
+  wandb_project?: string;
+  wandb_run_name?: string;
 };
 
 type RunPayload = {
@@ -53,6 +72,12 @@ type RunPayload = {
 export type RawRun = {
   run_id: string;
   run_payload?: RunPayload;
+  progress_payload?: JsonObject;
+  checkpoints_payload?: JsonObject;
+  metrics_payload?: {
+    metrics?: unknown[];
+  };
+  distributions_payloads_by_step?: Record<string, unknown>;
   rollout_payloads_by_step?: Record<string, RawStepPayload>;
 };
 
@@ -363,6 +388,11 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
 
   const runName = run?.run_payload?.run?.name ?? run?.run_id ?? "No run loaded";
   const runId = run?.run_payload?.run?.id ?? run?.run_id ?? "unknown-run";
+  const runMeta = run?.run_payload?.run;
+  const wandbUrl =
+    runMeta?.wandb_entity && runMeta.wandb_project && runMeta.wandb_run_name
+      ? `https://wandb.ai/${runMeta.wandb_entity}/${runMeta.wandb_project}/runs/${runMeta.wandb_run_name}`
+      : null;
 
   const rows = React.useMemo<Row[]>(() => {
     return activeSamples.map((sample, index) => {
@@ -401,7 +431,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
   >({});
   const [copyStatus, setCopyStatus] = React.useState<"idle" | "copied" | "error">("idle");
   const [dataViewMode, setDataViewMode] = React.useState<DataViewMode>("table");
-  const [activeTab, setActiveTab] = React.useState("data");
+  const [activeTab, setActiveTab] = React.useState("overview");
 
   const selectedCount = React.useMemo(
     () => Object.keys(selectedRollouts).length,
@@ -682,14 +712,14 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     >
       <header className="border-b border-zinc-800">
         <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight md:text-xl">
+              <h1 className="text-base font-semibold tracking-tight md:text-lg">
                 {runName}
               </h1>
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon-sm"
                 className="size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                 onClick={() => void navigator.clipboard.writeText(runId)}
                 title="Copy run ID"
@@ -746,60 +776,63 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               <TabsTrigger value="system" className="text-xs md:text-sm">
                 System
               </TabsTrigger>
+              <TabsTrigger value="checkpoints" className="text-xs md:text-sm">
+                Checkpoints
+              </TabsTrigger>
               <TabsTrigger value="resources" className="text-xs md:text-sm">
                 Resources
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex items-center gap-2">
-              <div
-                role="group"
-                className="flex items-center overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900"
-              >
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className={`rounded-none border-0 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-zinc-700 ${
-                    dataViewMode === "table"
-                      ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                  }`}
-                  onClick={() => setDataViewMode("table")}
-                  aria-label="Table view"
-                  title="Table view"
+            {activeTab === "data" ? (
+              <div className="flex items-center gap-2">
+                <div
+                  role="group"
+                  className="flex items-center overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900"
                 >
-                  <Table2 className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className={`rounded-none border-0 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-zinc-700 ${
-                    dataViewMode === "split"
-                      ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                  }`}
-                  onClick={() => setDataViewMode("split")}
-                  aria-label="Split view"
-                  title="Split view"
-                >
-                  <Columns2 className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className={`rounded-none border-0 ${
-                    dataViewMode === "grid"
-                      ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                  }`}
-                  onClick={() => setDataViewMode("grid")}
-                  aria-label="Grid view"
-                  title="Grid view"
-                >
-                  <Grid3x3 className="size-4" />
-                </Button>
-              </div>
-              {activeTab === "data" ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`rounded-none border-0 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-zinc-700 ${
+                      dataViewMode === "table"
+                        ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                        : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                    }`}
+                    onClick={() => setDataViewMode("table")}
+                    aria-label="Table view"
+                    title="Table view"
+                  >
+                    <Table2 className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`rounded-none border-0 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-zinc-700 ${
+                      dataViewMode === "split"
+                        ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                        : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                    }`}
+                    onClick={() => setDataViewMode("split")}
+                    aria-label="Split view"
+                    title="Split view"
+                  >
+                    <Columns2 className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`rounded-none border-0 ${
+                      dataViewMode === "grid"
+                        ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                        : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                    }`}
+                    onClick={() => setDataViewMode("grid")}
+                    aria-label="Grid view"
+                    title="Grid view"
+                  >
+                    <Grid3x3 className="size-4" />
+                  </Button>
+                </div>
                 <Button
                   variant="secondary"
                   className="h-8 justify-start bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
@@ -822,14 +855,43 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
                     </span>
                   </span>
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : activeTab === "overview" ? (
+              <div className="flex items-center gap-2">
+                {wandbUrl ? (
+                  <Button
+                    variant="secondary"
+                    className="h-8 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+                    asChild
+                  >
+                    <a href={wandbUrl} target="_blank" rel="noreferrer">
+                      View on W&B
+                    </a>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    className="h-8 bg-zinc-800 px-3 text-xs font-semibold text-zinc-500"
+                    disabled
+                  >
+                    View on W&B
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="icon-sm"
+                  className="bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
+                  aria-label="Refresh page"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="size-4" />
+                </Button>
+              </div>
+            ) : null}
           </div>
 
           <TabsContent value="overview">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-zinc-400">
-              Overview tab placeholder.
-            </div>
+            <RunOverviewTab run={run} />
           </TabsContent>
 
           <TabsContent value="system">
@@ -841,6 +903,12 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
           <TabsContent value="resources">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-zinc-400">
               Resources tab placeholder.
+            </div>
+          </TabsContent>
+
+          <TabsContent value="checkpoints">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-zinc-400">
+              Checkpoints tab placeholder.
             </div>
           </TabsContent>
 

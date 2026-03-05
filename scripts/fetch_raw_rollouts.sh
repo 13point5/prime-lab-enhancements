@@ -17,6 +17,13 @@ Options:
 Example:
   scripts/fetch_raw_rollouts.sh --steps last3 --limit 200 \
     --output raw-rollouts.json runA runB runC
+
+This script also fetches:
+  - run metadata (`prime rl get`)
+  - progress (`prime rl progress`)
+  - checkpoints (`prime rl checkpoints`)
+  - training metrics (`prime rl metrics`)
+  - reward/advantage distributions for all available distribution steps
 EOF
 }
 
@@ -172,14 +179,32 @@ for step in steps:
 PY
 }
 
+extract_distribution_steps() {
+  local progress_file="$1"
+
+  python3 - "$progress_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+progress = json.loads(Path(sys.argv[1]).read_text())
+raw_steps = progress.get("steps_with_distributions") or []
+steps = sorted({int(step) for step in raw_steps})
+
+for step in steps:
+    print(step)
+PY
+}
+
 for run_id in "${run_ids[@]}"; do
   run_dir="${tmp_dir}/${run_id}"
-  mkdir -p "${run_dir}/rollouts"
+  mkdir -p "${run_dir}/rollouts" "${run_dir}/distributions"
 
   echo "[fetch] run ${run_id}" >&2
   run_and_capture_json "${run_dir}/run.json" prime rl get "${run_id}" -o json
   run_and_capture_json "${run_dir}/progress.json" prime rl progress "${run_id}"
   run_and_capture_json "${run_dir}/checkpoints.json" prime rl checkpoints "${run_id}" -o json
+  run_and_capture_json "${run_dir}/metrics.json" prime rl metrics "${run_id}"
 
   steps=()
   while IFS= read -r step; do
@@ -194,6 +219,21 @@ for run_id in "${run_ids[@]}"; do
     run_and_capture_json \
       "${run_dir}/rollouts/${step}.json" \
       prime rl rollouts "${run_id}" -s "${step}" -n "${limit}"
+  done
+
+  distribution_steps=()
+  while IFS= read -r step; do
+    distribution_steps+=("$step")
+  done < <(extract_distribution_steps "${run_dir}/progress.json")
+  if [[ ${#distribution_steps[@]} -eq 0 ]]; then
+    echo "[fetch]   no distribution steps found" >&2
+  fi
+
+  for step in "${distribution_steps[@]}"; do
+    echo "[fetch]   distribution step ${step}" >&2
+    run_and_capture_json \
+      "${run_dir}/distributions/${step}.json" \
+      prime rl distributions "${run_id}" -s "${step}"
   done
 
   printf '%s\n' "${run_id}" >> "${tmp_dir}/run_ids.txt"
@@ -227,10 +267,15 @@ for run_id in run_ids:
     run_payload = json.loads((run_dir / "run.json").read_text())
     progress_payload = json.loads((run_dir / "progress.json").read_text())
     checkpoints_payload = json.loads((run_dir / "checkpoints.json").read_text())
+    metrics_payload = json.loads((run_dir / "metrics.json").read_text())
 
     rollout_payloads_by_step = {}
     for rollout_file in sorted((run_dir / "rollouts").glob("*.json"), key=lambda p: int(p.stem)):
         rollout_payloads_by_step[rollout_file.stem] = json.loads(rollout_file.read_text())
+
+    distributions_payloads_by_step = {}
+    for distribution_file in sorted((run_dir / "distributions").glob("*.json"), key=lambda p: int(p.stem)):
+        distributions_payloads_by_step[distribution_file.stem] = json.loads(distribution_file.read_text())
 
     result["runs"].append(
         {
@@ -238,6 +283,8 @@ for run_id in run_ids:
             "run_payload": run_payload,
             "progress_payload": progress_payload,
             "checkpoints_payload": checkpoints_payload,
+            "metrics_payload": metrics_payload,
+            "distributions_payloads_by_step": distributions_payloads_by_step,
             "rollout_payloads_by_step": rollout_payloads_by_step,
         }
     )
