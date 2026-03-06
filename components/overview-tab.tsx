@@ -55,7 +55,7 @@ type RunMeta = {
   wandb_run_name?: string;
 };
 
-type OverviewRun = {
+export type OverviewRun = {
   run_id: string;
   run_payload?: {
     run?: RunMeta;
@@ -116,6 +116,8 @@ const EXTRA_METRIC_COLORS = [
   "#38bdf8",
   "#bef264",
 ];
+
+const RUN_COMPARE_COLORS = ["#7c5cff", "#22d3ee", "#f97316", "#84cc16", "#f43f5e", "#eab308"];
 
 function parseMaybeJson(value: unknown): unknown {
   if (typeof value !== "string") {
@@ -628,9 +630,11 @@ function buildConfigText(meta: RunMeta | undefined): string {
 
 type RunOverviewTabProps = {
   run: OverviewRun | null;
+  compareRuns?: OverviewRun[];
+  compareVariant?: "overlay" | "dock" | "compare";
 };
 
-export function RunOverviewTab({ run }: RunOverviewTabProps) {
+export function RunOverviewTab({ run, compareRuns = [], compareVariant = "overlay" }: RunOverviewTabProps) {
   const runMeta = run?.run_payload?.run;
 
   const { chartData, metricKeys, stepTicks } = React.useMemo(() => buildSeries(run), [run]);
@@ -709,6 +713,20 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
     ["num_examples", validationConfig?.num_examples],
     ["rollouts_per_example", validationConfig?.rollouts_per_example],
   ].filter(([, value]) => value !== undefined && value !== null) as Array<[string, unknown]>;
+
+  const compareSeries = React.useMemo(() => {
+    return compareRuns
+      .map((candidate, index) => {
+        const series = buildSeries(candidate);
+        return {
+          id: candidate.run_id,
+          name: candidate.run_payload?.run?.name ?? candidate.run_id,
+          color: RUN_COMPARE_COLORS[index % RUN_COMPARE_COLORS.length],
+          data: series.chartData,
+        };
+      })
+      .filter((item) => item.data.length > 0);
+  }, [compareRuns]);
 
   return (
     <div className="grid gap-4 text-xs xl:grid-cols-[minmax(0,1fr)_minmax(320px,430px)]">
@@ -998,6 +1016,45 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
             </div>
           </div>
         )}
+
+        {compareSeries.length > 1 ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-zinc-100">Multi-run reward compare</p>
+              <p className="text-[11px] text-zinc-500">UX variant: {compareVariant}</p>
+            </div>
+            <div className="mb-3 flex flex-wrap gap-2 text-[11px] text-zinc-300">
+              {compareSeries.map((item) => (
+                <span key={item.id} className="inline-flex items-center gap-1.5 rounded border border-zinc-700 px-2 py-1">
+                  <span className="size-2 rounded-full" style={{ backgroundColor: item.color }} />
+                  {item.name}
+                </span>
+              ))}
+            </div>
+            <ChartContainer config={rewardChartConfig} className="h-[260px] w-full aspect-auto">
+              <LineChart margin={{ top: 10, right: 10, left: -14, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <XAxis type="number" dataKey="step" tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} width={40} />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                {compareSeries.map((item) => (
+                  <Line
+                    key={item.id}
+                    data={item.data}
+                    dataKey="reward"
+                    name={item.name}
+                    type="monotone"
+                    dot={false}
+                    stroke={item.color}
+                    strokeWidth={CHART_LINE_WIDTH}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                ))}
+              </LineChart>
+            </ChartContainer>
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
           <div className="flex items-center justify-between gap-2">

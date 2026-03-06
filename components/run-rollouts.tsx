@@ -1,15 +1,27 @@
 "use client";
 
 import * as React from "react";
-import { Check, Columns2, Copy, Grid3x3, Link2, MoreVertical, RefreshCw, Table2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Columns2,
+  Copy,
+  Grid3x3,
+  Link2,
+  MoreVertical,
+  RefreshCw,
+  Table2,
+} from "lucide-react";
 
 import { RunOverviewTab } from "@/components/overview-tab";
 import { RolloutGridView } from "@/components/rollouts/rollout-grid-view";
 import { RolloutSplitView } from "@/components/rollouts/rollout-split-view";
 import { RolloutTableView } from "@/components/rollouts/rollout-table-view";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StepSliderControl } from "@/components/step-slider-control";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +127,16 @@ type SelectedRolloutEntry = {
 
 type DataViewMode = "table" | "split" | "grid";
 
+type RunSummaryRow = {
+  id: string;
+  name: string;
+  environment: string;
+  model: string;
+  status: string;
+  step: string;
+  progress: string;
+};
+
 function getRolloutSelectionKey(runId: string, step: number | null, rowKey: string): string {
   return `${runId}::${step ?? "na"}::${rowKey}`;
 }
@@ -172,6 +194,31 @@ function toNumber(value: unknown): number | null {
     }
   }
   return null;
+}
+
+function getRunSteps(run: RawRun | null): number[] {
+  if (!run?.rollout_payloads_by_step) {
+    return [];
+  }
+  return Object.keys(run.rollout_payloads_by_step)
+    .map((key) => Number(key))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b);
+}
+
+function formatProgress(latestStep: number | null, maxSteps: number | null): string {
+  if (latestStep === null && maxSteps === null) {
+    return "-";
+  }
+
+  const completedSteps = latestStep === null ? 0 : Math.max(0, latestStep + 1);
+  if (maxSteps !== null && maxSteps > 0) {
+    const bounded = Math.min(completedSteps, maxSteps);
+    const pct = (bounded / maxSteps) * 100;
+    return `${bounded}/${maxSteps} (${pct.toFixed(1)}%)`;
+  }
+
+  return `${completedSteps}`;
 }
 
 function compactText(text: string): string {
@@ -321,22 +368,41 @@ function samplesForStep(run: RawRun | null, step: number | null): RawSample[] {
 }
 
 export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
+  const runs = React.useMemo(() => data?.runs ?? [], [data]);
+  const [selectedRunId, setSelectedRunId] = React.useState<string | null>(null);
+
   const run = React.useMemo<RawRun | null>(() => {
-    if (!data?.runs || data.runs.length === 0) {
+    if (runs.length === 0) {
       return null;
     }
-    return data.runs[0] ?? null;
-  }, [data]);
-
-  const steps = React.useMemo<number[]>(() => {
-    if (!run?.rollout_payloads_by_step) {
-      return [];
+    if (!selectedRunId) {
+      return null;
     }
-    return Object.keys(run.rollout_payloads_by_step)
-      .map((key) => Number(key))
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => a - b);
-  }, [run]);
+    return runs.find((candidate) => candidate.run_id === selectedRunId) ?? runs[0] ?? null;
+  }, [runs, selectedRunId]);
+
+  const isRunListView = run === null;
+
+  const runSummaryRows = React.useMemo<RunSummaryRow[]>(() => {
+    return runs.map((candidate) => {
+      const meta = candidate.run_payload?.run;
+      const latestStep =
+        toNumber(candidate.progress_payload?.latest_step) ?? getRunSteps(candidate).at(-1) ?? null;
+      const maxSteps = toNumber(meta?.max_steps);
+
+      return {
+        id: candidate.run_id,
+        name: meta?.name ?? candidate.run_id,
+        environment: meta?.environments?.[0]?.id ?? "-",
+        model: meta?.base_model ?? "-",
+        status: meta?.status ?? "-",
+        step: latestStep === null ? "-" : String(latestStep),
+        progress: formatProgress(latestStep, maxSteps),
+      };
+    });
+  }, [runs]);
+
+  const steps = React.useMemo<number[]>(() => getRunSteps(run), [run]);
 
   const [stepIndex, setStepIndex] = React.useState(0);
 
@@ -432,6 +498,30 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
   const [copyStatus, setCopyStatus] = React.useState<"idle" | "copied" | "error">("idle");
   const [dataViewMode, setDataViewMode] = React.useState<DataViewMode>("table");
   const [activeTab, setActiveTab] = React.useState("overview");
+  const [multiRunUxVariant, setMultiRunUxVariant] = React.useState<"overlay" | "dock" | "compare">("overlay");
+
+  React.useEffect(() => {
+    if (runs.length === 0) {
+      if (selectedRunId !== null) {
+        setSelectedRunId(null);
+      }
+      return;
+    }
+    if (selectedRunId && !runs.some((candidate) => candidate.run_id === selectedRunId)) {
+      setSelectedRunId(null);
+    }
+  }, [runs, selectedRunId]);
+
+  const selectedEnvId = run?.run_payload?.run?.environments?.[0]?.id ?? null;
+  const compareRuns = React.useMemo(() => {
+    if (!selectedEnvId) {
+      return run ? [run] : [];
+    }
+    return runs.filter((candidate) => {
+      const envId = candidate.run_payload?.run?.environments?.[0]?.id ?? null;
+      return envId === selectedEnvId;
+    });
+  }, [run, runs, selectedEnvId]);
 
   const selectedCount = React.useMemo(
     () => Object.keys(selectedRollouts).length,
@@ -714,18 +804,31 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
+              {isRunListView ? null : (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  onClick={() => setSelectedRunId(null)}
+                  title="Back to runs"
+                >
+                  <ArrowLeft className="size-3.5" />
+                </Button>
+              )}
               <h1 className="text-base font-semibold tracking-tight md:text-lg">
-                {runName}
+                {isRunListView ? "Runs" : runName}
               </h1>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                onClick={() => void navigator.clipboard.writeText(runId)}
-                title="Copy run ID"
-              >
-                <Copy className="size-3.5" />
-              </Button>
+              {isRunListView ? null : (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  onClick={() => void navigator.clipboard.writeText(runId)}
+                  title="Copy run ID"
+                >
+                  <Copy className="size-3.5" />
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -760,6 +863,48 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
           isLockedDataViewportMode && "flex min-h-0 flex-1 flex-col overflow-hidden",
         )}
       >
+        {isRunListView ? (
+          <section className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-zinc-300">Select a run to open details.</p>
+              <p className="text-xs text-zinc-500">Charts compare will be limited to same environment.</p>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-zinc-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-zinc-800 bg-zinc-900/60">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Env</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Step</TableHead>
+                    <TableHead>Progress</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {runSummaryRows.map((summary) => (
+                    <TableRow
+                      key={summary.id}
+                      className="cursor-pointer border-zinc-800 hover:bg-zinc-900/70"
+                      onClick={() => setSelectedRunId(summary.id)}
+                    >
+                      <TableCell className="font-medium text-zinc-100">{summary.name}</TableCell>
+                      <TableCell>{summary.environment}</TableCell>
+                      <TableCell className="max-w-[340px] truncate">{summary.model}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-zinc-700 text-zinc-300">
+                          {summary.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{summary.step}</TableCell>
+                      <TableCell>{summary.progress}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        ) : (
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -858,6 +1003,24 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
               </div>
             ) : activeTab === "overview" ? (
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 p-1">
+                  {(["overlay", "dock", "compare"] as const).map((variant) => (
+                    <Button
+                      key={variant}
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-6 px-2 text-[11px] uppercase",
+                        multiRunUxVariant === variant
+                          ? "bg-zinc-700 text-zinc-100 hover:bg-zinc-700"
+                          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100",
+                      )}
+                      onClick={() => setMultiRunUxVariant(variant)}
+                    >
+                      {variant}
+                    </Button>
+                  ))}
+                </div>
                 {wandbUrl ? (
                   <Button
                     variant="secondary"
@@ -891,7 +1054,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
           </div>
 
           <TabsContent value="overview">
-            <RunOverviewTab run={run} />
+            <RunOverviewTab run={run} compareRuns={compareRuns} compareVariant={multiRunUxVariant} />
           </TabsContent>
 
           <TabsContent value="system">
@@ -971,6 +1134,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
             </div>
           </TabsContent>
         </Tabs>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
