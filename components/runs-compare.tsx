@@ -16,7 +16,6 @@ import {
   buildRunColorMap,
   buildRunSummaries,
 } from "@/components/runs-home";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
@@ -371,8 +370,8 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
   return (
     <main className="h-screen overflow-hidden bg-black text-zinc-100">
       <div className="flex h-full min-h-0 flex-col">
-        <header className="border-b border-zinc-900 px-4 py-4 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <header className="border-b border-zinc-900">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="icon-sm" className="text-zinc-400 hover:text-zinc-100">
                 <Link href="/" aria-label="Back to training home" title="Back to training home">
@@ -382,9 +381,6 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
               <h1 className="text-xl font-semibold tracking-tight">
                 {activeGroup ? activeGroup.environment : "Runs"}
               </h1>
-              <Badge variant="outline" className="h-5 border-zinc-700 bg-zinc-900 text-[11px] text-zinc-300">
-                Beta
-              </Badge>
             </div>
 
             <Select

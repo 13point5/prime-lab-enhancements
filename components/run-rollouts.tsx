@@ -720,8 +720,8 @@ export function RunRollouts({ run, backHref }: RunRolloutsProps) {
         isLockedDataViewportMode ? "flex h-screen flex-col overflow-hidden" : "min-h-screen",
       )}
     >
-      <header className="border-b border-zinc-800">
-        <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-5">
+      <header className="border-b border-zinc-900">
+        <div className="mx-auto w-full max-w-[2100px] px-4 py-4 sm:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
               <Button
@@ -734,7 +734,7 @@ export function RunRollouts({ run, backHref }: RunRolloutsProps) {
                   <ArrowLeft className="size-3.5" />
                 </Link>
               </Button>
-              <h1 className="text-base font-semibold tracking-tight md:text-lg">
+              <h1 className="text-xl font-semibold tracking-tight">
                 {runName}
               </h1>
               <Button

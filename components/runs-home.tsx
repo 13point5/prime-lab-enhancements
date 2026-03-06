@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 
 import type { RawRolloutsData, RawRun } from "@/components/run-rollouts";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -790,20 +789,9 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
   return (
     <main className="min-h-screen bg-black text-zinc-100">
       <div className="flex min-h-screen flex-col">
-        <header className="border-b border-zinc-900 px-4 py-5 sm:px-6">
-          <div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight">Training</h1>
-                <Badge
-                  variant="outline"
-                  className="h-5 border-zinc-700 bg-zinc-900 text-[11px] text-zinc-300"
-                >
-                  Beta
-                </Badge>
-              </div>
-              <p className="mt-1 text-sm text-zinc-400">Navigate environments and runs.</p>
-            </div>
+        <header className="border-b border-zinc-900">
+          <div className="px-4 py-4 sm:px-6">
+            <h1 className="text-xl font-semibold tracking-tight">Training</h1>
           </div>
         </header>
 
