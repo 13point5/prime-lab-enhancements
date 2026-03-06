@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Expand, Minimize2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
+import { ChartCardGrid, type ChartCardGridItem } from "@/components/chart-card-grid";
 import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
@@ -696,6 +697,135 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
     [],
   );
 
+  const expandedChartCards = React.useMemo<ChartCardGridItem[]>(() => {
+    const buildCollapseButton = (key: string) => (
+      <Button
+        key={key}
+        variant="secondary"
+        size="icon-xs"
+        className="size-6 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
+        onClick={() => setMetricsExpanded(false)}
+        aria-label="Collapse metrics"
+      >
+        <Minimize2 className="size-3.5" />
+      </Button>
+    );
+
+    const cards: ChartCardGridItem[] = [
+      {
+        id: "reward",
+        title: "Reward",
+        actions: buildCollapseButton("reward-collapse"),
+        content:
+          chartData.length === 0 ? (
+            <div className="flex h-[240px] items-center justify-center text-xs text-zinc-500">
+              No reward data available.
+            </div>
+          ) : (
+            <ChartContainer config={rewardChartConfig} className="h-[240px] w-full aspect-auto">
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: -14, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <XAxis
+                  type="number"
+                  dataKey="step"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={stepTicks}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  stroke="rgba(161,161,170,0.8)"
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  stroke="rgba(161,161,170,0.8)"
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      indicator="line"
+                      className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
+                    />
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="reward"
+                  name="reward"
+                  stroke={REWARD_COLOR}
+                  strokeWidth={DEFAULT_CHART_LINE_WIDTH}
+                  dot={false}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ChartContainer>
+          ),
+      },
+    ];
+
+    for (const metricKey of metricKeys) {
+      const color = metricColorByKey[metricKey];
+      const config: ChartConfig = {
+        [metricKey]: {
+          label: metricKey,
+          color,
+        },
+      };
+
+      cards.push({
+        id: `metric-${metricKey}`,
+        title: metricKey,
+        subtitle: "Metrics",
+        actions: buildCollapseButton(`collapse-${metricKey}`),
+        content: (
+          <ChartContainer config={config} className="h-[220px] w-full aspect-auto">
+            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -14, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+              <XAxis
+                type="number"
+                dataKey="step"
+                domain={["dataMin", "dataMax"]}
+                ticks={stepTicks}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                stroke="rgba(161,161,170,0.8)"
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                stroke="rgba(161,161,170,0.8)"
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    indicator="line"
+                    className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
+                  />
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey={metricKey}
+                name={metricKey}
+                stroke={color}
+                strokeWidth={DEFAULT_CHART_LINE_WIDTH}
+                dot={false}
+                connectNulls
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ChartContainer>
+        ),
+      });
+    }
+
+    return cards;
+  }, [chartData, metricColorByKey, metricKeys, rewardChartConfig, stepTicks]);
+
   const trainingValues = [
     ["max_steps", runMeta?.max_steps],
     ["rollouts_per_example", runMeta?.rollouts_per_example],
@@ -868,137 +998,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="group/metric-card rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-zinc-100">Reward</p>
-                  <Button
-                    variant="secondary"
-                    size="icon-xs"
-                    className="size-6 bg-zinc-800 text-zinc-100 opacity-0 pointer-events-none transition-opacity hover:bg-zinc-700 group-hover/metric-card:opacity-100 group-hover/metric-card:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
-                    onClick={() => setMetricsExpanded(false)}
-                    aria-label="Collapse metrics"
-                  >
-                    <Minimize2 className="size-3.5" />
-                  </Button>
-                </div>
-                {chartData.length === 0 ? (
-                  <div className="flex h-[240px] items-center justify-center text-xs text-zinc-500">
-                    No reward data available.
-                  </div>
-                ) : (
-                  <ChartContainer config={rewardChartConfig} className="mt-2 h-[240px] w-full aspect-auto">
-                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: -14, bottom: 0 }}>
-                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-                      <XAxis
-                        type="number"
-                        dataKey="step"
-                        domain={["dataMin", "dataMax"]}
-                        ticks={stepTicks}
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        stroke="rgba(161,161,170,0.8)"
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        stroke="rgba(161,161,170,0.8)"
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            indicator="line"
-                            className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-                          />
-                        }
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="reward"
-                        name="reward"
-                        stroke={REWARD_COLOR}
-                        strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-                        dot={false}
-                        connectNulls
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ChartContainer>
-                )}
-              </div>
-
-              {metricKeys.map((metricKey) => {
-                const color = metricColorByKey[metricKey];
-                const config: ChartConfig = {
-                  [metricKey]: {
-                    label: metricKey,
-                    color,
-                  },
-                };
-
-                return (
-                  <div
-                    key={`metric-card-${metricKey}`}
-                    className="group/metric-card rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-zinc-100">{metricKey}</p>
-                      <Button
-                        variant="secondary"
-                        size="icon-xs"
-                        className="size-6 bg-zinc-800 text-zinc-100 opacity-0 pointer-events-none transition-opacity hover:bg-zinc-700 group-hover/metric-card:opacity-100 group-hover/metric-card:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
-                        onClick={() => setMetricsExpanded(false)}
-                        aria-label="Collapse metrics"
-                      >
-                        <Minimize2 className="size-3.5" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-zinc-500">Metrics</p>
-                    <ChartContainer config={config} className="mt-2 h-[220px] w-full aspect-auto">
-                      <LineChart data={chartData} margin={{ top: 10, right: 10, left: -14, bottom: 0 }}>
-                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-                        <XAxis
-                          type="number"
-                          dataKey="step"
-                          domain={["dataMin", "dataMax"]}
-                          ticks={stepTicks}
-                          tickLine={false}
-                          axisLine={false}
-                          tickMargin={8}
-                          stroke="rgba(161,161,170,0.8)"
-                        />
-                        <YAxis
-                          tickLine={false}
-                          axisLine={false}
-                          tickMargin={8}
-                          stroke="rgba(161,161,170,0.8)"
-                        />
-                        <ChartTooltip
-                          content={
-                            <ChartTooltipContent
-                              indicator="line"
-                              className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-                            />
-                          }
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey={metricKey}
-                          name={metricKey}
-                          stroke={color}
-                          strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-                          dot={false}
-                          connectNulls
-                          isAnimationActive={false}
-                        />
-                      </LineChart>
-                    </ChartContainer>
-                  </div>
-                );
-              })}
-            </div>
+            <ChartCardGrid items={expandedChartCards} columnsClassName="md:grid-cols-2" />
           </div>
         )}
 

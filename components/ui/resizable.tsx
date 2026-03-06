@@ -29,6 +29,7 @@ function ResizableHandle({
   className,
   ...props
 }: ResizablePrimitive.SeparatorProps & {
+  tabIndex?: number
   withHandle?: boolean
 }) {
   return (

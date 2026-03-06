@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
+import { ChartCardGrid, type ChartCardGridItem } from "@/components/chart-card-grid";
 import type { RawRolloutsData } from "@/components/run-rollouts";
 import {
   buildEnvironmentGroups,
@@ -179,6 +180,135 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
     }
     return config;
   }, [runColorById, selectedRuns]);
+
+  const chartCards = React.useMemo<ChartCardGridItem[]>(() => {
+    const cards: ChartCardGridItem[] = [
+      {
+        id: "reward-mean",
+        title: "reward/mean",
+        content:
+          rewardSeries.data.length === 0 ? (
+            <div className="flex h-[220px] items-center justify-center text-[11px] text-zinc-500">
+              No data.
+            </div>
+          ) : (
+            <ChartContainer
+              config={runChartConfig}
+              className="h-[220px] w-full aspect-auto"
+            >
+              <LineChart
+                data={rewardSeries.data}
+                margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
+              >
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <XAxis
+                  type="number"
+                  dataKey="step"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={rewardSeries.stepTicks}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  stroke="rgba(161,161,170,0.8)"
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  stroke="rgba(161,161,170,0.8)"
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      indicator="line"
+                      className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
+                    />
+                  }
+                />
+                {selectedRuns.map((run) => (
+                  <Line
+                    key={`reward-line-${run.runId}`}
+                    type="monotone"
+                    dataKey={run.runId}
+                    name={run.name}
+                    stroke={runColorById[run.runId]}
+                    strokeWidth={DEFAULT_CHART_LINE_WIDTH}
+                    dot={false}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                ))}
+              </LineChart>
+            </ChartContainer>
+          ),
+      },
+    ];
+
+    for (const metricKey of metricKeysToShow) {
+      const metricData = metricDataByKey[metricKey] ?? [];
+      cards.push({
+        id: `metric-${metricKey}`,
+        title: metricKey,
+        content:
+          metricData.length === 0 ? (
+            <div className="flex h-[220px] items-center justify-center text-[11px] text-zinc-500">
+              No data.
+            </div>
+          ) : (
+            <ChartContainer
+              config={runChartConfig}
+              className="h-[220px] w-full aspect-auto"
+            >
+              <LineChart
+                data={metricData}
+                margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
+              >
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <XAxis
+                  type="number"
+                  dataKey="step"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={rewardSeries.stepTicks}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  stroke="rgba(161,161,170,0.8)"
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  stroke="rgba(161,161,170,0.8)"
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      indicator="line"
+                      className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
+                    />
+                  }
+                />
+                {selectedRuns.map((run) => (
+                  <Line
+                    key={`${metricKey}-${run.runId}`}
+                    type="monotone"
+                    dataKey={run.runId}
+                    name={run.name}
+                    stroke={runColorById[run.runId]}
+                    strokeWidth={DEFAULT_CHART_LINE_WIDTH}
+                    dot={false}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                ))}
+              </LineChart>
+            </ChartContainer>
+          ),
+      });
+    }
+
+    return cards;
+  }, [metricDataByKey, metricKeysToShow, rewardSeries, runChartConfig, runColorById, selectedRuns]);
 
   const allRunsSelected =
     !!activeGroup && activeGroup.runs.length > 0 && selectedRunIds.length === activeGroup.runs.length;
@@ -390,131 +520,7 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
                           Select at least one run to view charts.
                         </div>
                       ) : (
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">
-                            <p className="text-xs font-semibold text-zinc-200">reward/mean</p>
-                            {rewardSeries.data.length === 0 ? (
-                              <div className="flex h-[220px] items-center justify-center text-[11px] text-zinc-500">
-                                No data.
-                              </div>
-                            ) : (
-                              <ChartContainer
-                                config={runChartConfig}
-                                className="mt-2 h-[220px] w-full aspect-auto"
-                              >
-                                <LineChart
-                                  data={rewardSeries.data}
-                                  margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
-                                >
-                                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-                                  <XAxis
-                                    type="number"
-                                    dataKey="step"
-                                    domain={["dataMin", "dataMax"]}
-                                    ticks={rewardSeries.stepTicks}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    stroke="rgba(161,161,170,0.8)"
-                                  />
-                                  <YAxis
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    stroke="rgba(161,161,170,0.8)"
-                                  />
-                                  <ChartTooltip
-                                    content={
-                                      <ChartTooltipContent
-                                        indicator="line"
-                                        className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-                                      />
-                                    }
-                                  />
-                                  {selectedRuns.map((run) => (
-                                    <Line
-                                      key={`reward-line-${run.runId}`}
-                                      type="monotone"
-                                      dataKey={run.runId}
-                                      name={run.name}
-                                      stroke={runColorById[run.runId]}
-                                      strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-                                      dot={false}
-                                      connectNulls
-                                      isAnimationActive={false}
-                                    />
-                                  ))}
-                                </LineChart>
-                              </ChartContainer>
-                            )}
-                          </div>
-
-                          {metricKeysToShow.map((metricKey) => {
-                            const metricData = metricDataByKey[metricKey] ?? [];
-                            return (
-                              <div
-                                key={`metric-panel-${metricKey}`}
-                                className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5"
-                              >
-                                <p className="text-xs font-semibold text-zinc-200">{metricKey}</p>
-                                {metricData.length === 0 ? (
-                                  <div className="flex h-[220px] items-center justify-center text-[11px] text-zinc-500">
-                                    No data.
-                                  </div>
-                                ) : (
-                                  <ChartContainer
-                                    config={runChartConfig}
-                                    className="mt-2 h-[220px] w-full aspect-auto"
-                                  >
-                                    <LineChart
-                                      data={metricData}
-                                      margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
-                                    >
-                                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-                                      <XAxis
-                                        type="number"
-                                        dataKey="step"
-                                        domain={["dataMin", "dataMax"]}
-                                        ticks={rewardSeries.stepTicks}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={8}
-                                        stroke="rgba(161,161,170,0.8)"
-                                      />
-                                      <YAxis
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={8}
-                                        stroke="rgba(161,161,170,0.8)"
-                                      />
-                                      <ChartTooltip
-                                        content={
-                                          <ChartTooltipContent
-                                            indicator="line"
-                                            className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-                                          />
-                                        }
-                                      />
-                                      {selectedRuns.map((run) => (
-                                        <Line
-                                          key={`${metricKey}-${run.runId}`}
-                                          type="monotone"
-                                          dataKey={run.runId}
-                                          name={run.name}
-                                          stroke={runColorById[run.runId]}
-                                          strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-                                          dot={false}
-                                          connectNulls
-                                          isAnimationActive={false}
-                                        />
-                                      ))}
-                                    </LineChart>
-                                  </ChartContainer>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <ChartCardGrid items={chartCards} />
                       )}
                     </div>
                   </div>
