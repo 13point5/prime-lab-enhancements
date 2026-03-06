@@ -7,7 +7,10 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import type { ChartCardGridItem } from "@/components/chart-card-grid";
 import { CompareVariationOne } from "@/components/compare/compare-variation-one";
-import { CompareVariationTwo } from "@/components/compare/compare-variation-two";
+import {
+  CompareVariationTwo,
+  type CompareStepTab,
+} from "@/components/compare/compare-variation-two";
 import type { RawRolloutsData } from "@/components/run-rollouts";
 import {
   buildEnvironmentGroups,
@@ -86,7 +89,8 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
   const [hasLoadedRunSelections, setHasLoadedRunSelections] = React.useState(false);
   const [variation, setVariation] = React.useState<CompareVariation>("variation-1");
   const [variationOneTab, setVariationOneTab] = React.useState<"charts" | "rollouts">("charts");
-  const [variationTwoTab, setVariationTwoTab] = React.useState<"charts" | "rollouts">("charts");
+  const [variationTwoTab, setVariationTwoTab] = React.useState<string>("charts");
+  const [variationTwoStepTabs, setVariationTwoStepTabs] = React.useState<CompareStepTab[]>([]);
   const [activeRolloutRunId, setActiveRolloutRunId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -136,6 +140,11 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
     }
     writeRunSelectionStore(selectedRunIdsByEnvironment);
   }, [hasLoadedRunSelections, selectedRunIdsByEnvironment]);
+
+  React.useEffect(() => {
+    setVariationTwoStepTabs([]);
+    setVariationTwoTab("charts");
+  }, [activeGroup?.key]);
 
   const selectedRunIds = React.useMemo(() => {
     if (!activeGroup) {
@@ -194,7 +203,105 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
     return config;
   }, [runColorById, selectedRuns]);
 
-  const chartCards = React.useMemo<ChartCardGridItem[]>(() => {
+  const handleOpenStepTab = React.useCallback((step: number) => {
+    if (!Number.isFinite(step)) {
+      return;
+    }
+
+    const requestedStep = Math.round(step);
+    const tabId = `step-${requestedStep}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    setVariationTwoStepTabs((current) => {
+      const sameStepCount =
+        current.filter((tab) => tab.requestedStep === requestedStep).length + 1;
+      const title =
+        sameStepCount === 1
+          ? `Step ${requestedStep}`
+          : `Step ${requestedStep} · ${sameStepCount}`;
+
+      return [
+        ...current,
+        {
+          id: tabId,
+          requestedStep,
+          title,
+        },
+      ];
+    });
+    setVariationTwoTab(tabId);
+  }, []);
+
+  const handleCloseStepTab = React.useCallback((tabId: string) => {
+    setVariationTwoStepTabs((current) => current.filter((tab) => tab.id !== tabId));
+    setVariationTwoTab((current) => (current === tabId ? "charts" : current));
+  }, []);
+
+  const createChartCards = React.useCallback((onStepClick?: (step: number) => void) => {
+    const handleChartClick = onStepClick
+      ? (state?: { activeLabel?: unknown }) => {
+          const rawStep = state?.activeLabel;
+          const parsedStep = typeof rawStep === "number" ? rawStep : Number(rawStep);
+          if (Number.isFinite(parsedStep)) {
+            onStepClick(parsedStep);
+          }
+        }
+      : undefined;
+
+    const renderChart = (
+      data: Array<Record<string, number | null>>,
+      lineKeyPrefix: string,
+    ) => (
+      <ChartContainer
+        config={runChartConfig}
+        className={`h-[220px] w-full aspect-auto${onStepClick ? " cursor-pointer" : ""}`}
+      >
+        <LineChart
+          data={data}
+          margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
+          onClick={handleChartClick}
+        >
+          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+          <XAxis
+            type="number"
+            dataKey="step"
+            domain={["dataMin", "dataMax"]}
+            ticks={rewardSeries.stepTicks}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            stroke="rgba(161,161,170,0.8)"
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            stroke="rgba(161,161,170,0.8)"
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                indicator="line"
+                className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
+              />
+            }
+          />
+          {selectedRuns.map((run) => (
+            <Line
+              key={`${lineKeyPrefix}-${run.runId}`}
+              type="monotone"
+              dataKey={run.runId}
+              name={run.name}
+              stroke={runColorById[run.runId]}
+              strokeWidth={DEFAULT_CHART_LINE_WIDTH}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ChartContainer>
+    );
+
     const cards: ChartCardGridItem[] = [
       {
         id: "reward-mean",
@@ -205,51 +312,7 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
               No data.
             </div>
           ) : (
-            <ChartContainer config={runChartConfig} className="h-[220px] w-full aspect-auto">
-              <LineChart
-                data={rewardSeries.data}
-                margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
-              >
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-                <XAxis
-                  type="number"
-                  dataKey="step"
-                  domain={["dataMin", "dataMax"]}
-                  ticks={rewardSeries.stepTicks}
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  stroke="rgba(161,161,170,0.8)"
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  stroke="rgba(161,161,170,0.8)"
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      indicator="line"
-                      className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-                    />
-                  }
-                />
-                {selectedRuns.map((run) => (
-                  <Line
-                    key={`reward-line-${run.runId}`}
-                    type="monotone"
-                    dataKey={run.runId}
-                    name={run.name}
-                    stroke={runColorById[run.runId]}
-                    strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-                    dot={false}
-                    connectNulls
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ChartContainer>
+            renderChart(rewardSeries.data, "reward-line")
           ),
       },
     ];
@@ -265,57 +328,19 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
               No data.
             </div>
           ) : (
-            <ChartContainer config={runChartConfig} className="h-[220px] w-full aspect-auto">
-              <LineChart
-                data={metricData}
-                margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
-              >
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-                <XAxis
-                  type="number"
-                  dataKey="step"
-                  domain={["dataMin", "dataMax"]}
-                  ticks={rewardSeries.stepTicks}
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  stroke="rgba(161,161,170,0.8)"
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  stroke="rgba(161,161,170,0.8)"
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      indicator="line"
-                      className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-                    />
-                  }
-                />
-                {selectedRuns.map((run) => (
-                  <Line
-                    key={`${metricKey}-${run.runId}`}
-                    type="monotone"
-                    dataKey={run.runId}
-                    name={run.name}
-                    stroke={runColorById[run.runId]}
-                    strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-                    dot={false}
-                    connectNulls
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ChartContainer>
+            renderChart(metricData, metricKey)
           ),
       });
     }
 
     return cards;
   }, [metricDataByKey, metricKeysToShow, rewardSeries, runChartConfig, runColorById, selectedRuns]);
+
+  const chartCards = React.useMemo<ChartCardGridItem[]>(() => createChartCards(), [createChartCards]);
+  const interactiveChartCards = React.useMemo<ChartCardGridItem[]>(
+    () => createChartCards(handleOpenStepTab),
+    [createChartCards, handleOpenStepTab],
+  );
 
   const allRunsSelected =
     !!activeGroup && activeGroup.runs.length > 0 && selectedRunIds.length === activeGroup.runs.length;
@@ -431,10 +456,12 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
               selectedRunIdSet={selectedRunIdSet}
               allRunsSelected={allRunsSelected}
               runColorById={runColorById}
-              chartCards={chartCards}
+              chartCards={interactiveChartCards}
               activeRolloutRunId={activeRolloutRunId}
-              contentTab={variationTwoTab}
-              onContentTabChange={(value) => setVariationTwoTab(value as "charts" | "rollouts")}
+              activeTab={variationTwoTab}
+              stepTabs={variationTwoStepTabs}
+              onActiveTabChange={setVariationTwoTab}
+              onCloseStepTab={handleCloseStepTab}
               onActiveRunIdChange={setActiveRolloutRunId}
               onToggleRun={handleToggleRun}
               onToggleAllRuns={handleToggleAllRuns}

@@ -67,6 +67,7 @@ type RunRolloutDataPanelProps = {
   run: RawRun;
   className?: string;
   controlsStart?: React.ReactNode;
+  requestedStep?: number | null;
 };
 
 function getRolloutSelectionKey(runId: string, step: number | null, rowKey: string): string {
@@ -273,6 +274,7 @@ export function RunRolloutDataPanel({
   run,
   className,
   controlsStart,
+  requestedStep,
 }: RunRolloutDataPanelProps) {
   const steps = React.useMemo<number[]>(() => {
     if (!run.rollout_payloads_by_step) {
@@ -286,9 +288,33 @@ export function RunRolloutDataPanel({
 
   const [stepIndex, setStepIndex] = React.useState(0);
 
+  const resolveStepIndex = React.useCallback(
+    (candidateSteps: number[]) => {
+      if (candidateSteps.length === 0) {
+        return 0;
+      }
+
+      if (requestedStep === null || requestedStep === undefined || !Number.isFinite(requestedStep)) {
+        return candidateSteps.length - 1;
+      }
+
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (const [index, step] of candidateSteps.entries()) {
+        const distance = Math.abs(step - requestedStep);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      }
+      return nearestIndex;
+    },
+    [requestedStep],
+  );
+
   React.useEffect(() => {
-    setStepIndex(steps.length > 0 ? steps.length - 1 : 0);
-  }, [run.run_id, steps.length]);
+    setStepIndex(resolveStepIndex(steps));
+  }, [resolveStepIndex, run.run_id, steps]);
 
   const activeStep = steps[stepIndex] ?? null;
   const activeSamples = React.useMemo(() => samplesForStep(run, activeStep), [run, activeStep]);

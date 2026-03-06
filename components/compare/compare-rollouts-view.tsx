@@ -8,6 +8,7 @@ type CompareRolloutsViewProps = {
   activeRunId: string | null;
   runColorById: Record<string, string>;
   onActiveRunIdChange: (runId: string) => void;
+  requestedStep?: number | null;
 };
 
 export function CompareRolloutsView({
@@ -15,6 +16,7 @@ export function CompareRolloutsView({
   activeRunId,
   runColorById,
   onActiveRunIdChange,
+  requestedStep,
 }: CompareRolloutsViewProps) {
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-zinc-900 bg-[#060606] p-4">
@@ -23,6 +25,7 @@ export function CompareRolloutsView({
         activeRunId={activeRunId}
         runColorById={runColorById}
         onActiveRunIdChange={onActiveRunIdChange}
+        requestedStep={requestedStep}
       />
     </div>
   );

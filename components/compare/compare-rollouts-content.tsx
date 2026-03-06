@@ -15,6 +15,7 @@ type CompareRolloutsContentProps = {
   activeRunId: string | null;
   runColorById: Record<string, string>;
   onActiveRunIdChange: (runId: string) => void;
+  requestedStep?: number | null;
 };
 
 export function CompareRolloutsContent({
@@ -22,6 +23,7 @@ export function CompareRolloutsContent({
   activeRunId,
   runColorById,
   onActiveRunIdChange,
+  requestedStep,
 }: CompareRolloutsContentProps) {
   const activeRun = selectedRuns.find((run) => run.runId === activeRunId) ?? selectedRuns[0] ?? null;
 
@@ -45,25 +47,33 @@ export function CompareRolloutsContent({
     <RunRolloutDataPanel
       run={activeRun.run}
       className="h-full"
+      requestedStep={requestedStep}
       controlsStart={
-        <Select value={activeRun.runId} onValueChange={onActiveRunIdChange}>
-          <SelectTrigger className="h-8 min-w-[280px] max-w-[420px] border-zinc-700 bg-zinc-950 text-zinc-100">
-            <SelectValue placeholder="Choose run" />
-          </SelectTrigger>
-          <SelectContent className="border-zinc-800 bg-zinc-950 text-zinc-100">
-            {selectedRuns.map((run) => (
-              <SelectItem key={`rollout-select-${run.runId}`} value={run.runId}>
-                <span className="flex items-center gap-2">
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: runColorById[run.runId] }}
-                  />
-                  <span className="truncate">{run.name}</span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={activeRun.runId} onValueChange={onActiveRunIdChange}>
+            <SelectTrigger className="h-8 min-w-[280px] max-w-[420px] border-zinc-700 bg-zinc-950 text-zinc-100">
+              <SelectValue placeholder="Choose run" />
+            </SelectTrigger>
+            <SelectContent className="border-zinc-800 bg-zinc-950 text-zinc-100">
+              {selectedRuns.map((run) => (
+                <SelectItem key={`rollout-select-${run.runId}`} value={run.runId}>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: runColorById[run.runId] }}
+                    />
+                    <span className="truncate">{run.name}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {requestedStep !== null && requestedStep !== undefined ? (
+            <div className="inline-flex h-8 items-center rounded-lg border border-zinc-800 bg-black px-3 text-xs font-semibold text-zinc-300">
+              Near step {requestedStep}
+            </div>
+          ) : null}
+        </div>
       }
     />
   );
