@@ -60,6 +60,7 @@ type RunPayloadRun = {
   started_at?: string;
   completed_at?: string;
   created_at?: string;
+  updated_at?: string;
   wandb_entity?: string;
   wandb_project?: string;
   wandb_run_name?: string;

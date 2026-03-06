@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { RunRollouts, type RawRolloutsData } from "@/components/run-rollouts";
+import { RunWorkspace } from "@/components/run-workspace";
+import { type RawRolloutsData } from "@/components/run-rollouts";
 
 function loadLatestRolloutData(): RawRolloutsData | null {
   const root = process.cwd();
@@ -26,5 +27,5 @@ function loadLatestRolloutData(): RawRolloutsData | null {
 
 export default function Page() {
   const data = loadLatestRolloutData();
-  return <RunRollouts data={data} />;
+  return <RunWorkspace data={data} />;
 }
