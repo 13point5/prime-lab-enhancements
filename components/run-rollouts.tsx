@@ -1,7 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Check, Columns2, Copy, Grid3x3, Link2, MoreVertical, RefreshCw, Table2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Columns2,
+  Copy,
+  Grid3x3,
+  Link2,
+  MoreVertical,
+  RefreshCw,
+  Table2,
+} from "lucide-react";
+import Link from "next/link";
 
 import { RunOverviewTab } from "@/components/overview-tab";
 import { RolloutGridView } from "@/components/rollouts/rollout-grid-view";
@@ -60,6 +71,7 @@ type RunPayloadRun = {
   started_at?: string;
   completed_at?: string;
   created_at?: string;
+  updated_at?: string;
   wandb_entity?: string;
   wandb_project?: string;
   wandb_run_name?: string;
@@ -82,7 +94,12 @@ export type RawRun = {
 };
 
 export type RawRolloutsData = {
-  runs?: RawRun[];
+  runs: RawRun[];
+};
+
+type RunRolloutsProps = {
+  run: RawRun;
+  backHref: string;
 };
 
 type Row = {
@@ -306,8 +323,8 @@ function displayNumber(value: number | null): string {
   return value.toFixed(2);
 }
 
-function samplesForStep(run: RawRun | null, step: number | null): RawSample[] {
-  if (!run || step === null) {
+function samplesForStep(run: RawRun, step: number | null): RawSample[] {
+  if (step === null) {
     return [];
   }
   const payload = run.rollout_payloads_by_step?.[String(step)];
@@ -320,16 +337,9 @@ function samplesForStep(run: RawRun | null, step: number | null): RawSample[] {
   );
 }
 
-export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
-  const run = React.useMemo<RawRun | null>(() => {
-    if (!data?.runs || data.runs.length === 0) {
-      return null;
-    }
-    return data.runs[0] ?? null;
-  }, [data]);
-
+export function RunRollouts({ run, backHref }: RunRolloutsProps) {
   const steps = React.useMemo<number[]>(() => {
-    if (!run?.rollout_payloads_by_step) {
+    if (!run.rollout_payloads_by_step) {
       return [];
     }
     return Object.keys(run.rollout_payloads_by_step)
@@ -342,7 +352,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
 
   React.useEffect(() => {
     setStepIndex(steps.length > 0 ? steps.length - 1 : 0);
-  }, [run?.run_id, steps.length]);
+  }, [run.run_id, steps.length]);
 
   const activeStep = steps[stepIndex] ?? null;
   const activeSamples = React.useMemo(
@@ -351,7 +361,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
   );
 
   const rewardColumns = React.useMemo<string[]>(() => {
-    if (!run?.rollout_payloads_by_step) {
+    if (!run.rollout_payloads_by_step) {
       return [];
     }
 
@@ -386,9 +396,9 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     return [...keys].sort((a, b) => a.localeCompare(b));
   }, [run]);
 
-  const runName = run?.run_payload?.run?.name ?? run?.run_id ?? "No run loaded";
-  const runId = run?.run_payload?.run?.id ?? run?.run_id ?? "unknown-run";
-  const runMeta = run?.run_payload?.run;
+  const runName = run.run_payload?.run?.name ?? run.run_id;
+  const runId = run.run_payload?.run?.id ?? run.run_id;
+  const runMeta = run.run_payload?.run;
   const wandbUrl =
     runMeta?.wandb_entity && runMeta.wandb_project && runMeta.wandb_run_name
       ? `https://wandb.ai/${runMeta.wandb_entity}/${runMeta.wandb_project}/runs/${runMeta.wandb_run_name}`
@@ -563,12 +573,9 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
       return compareSampleIds(a.row.sample.sample_id, b.row.sample.sample_id);
     });
 
-    const runs = data?.runs ?? [];
     const runById = new Map<string, RawRun>();
-    for (const rawRun of runs) {
-      const id = rawRun.run_payload?.run?.id ?? rawRun.run_id;
-      runById.set(id, rawRun);
-    }
+    runById.set(run.run_id, run);
+    runById.set(runId, run);
 
     const lines: string[] = [];
     lines.push("# RL Rollout Export");
@@ -684,7 +691,7 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
     } catch {
       setCopyStatus("error");
     }
-  }, [data?.runs, selectedRollouts]);
+  }, [run, runId, selectedRollouts]);
 
   React.useEffect(() => {
     if (copyStatus !== "copied") {
@@ -714,6 +721,16 @@ export function RunRollouts({ data }: { data: RawRolloutsData | null }) {
         <div className="mx-auto w-full max-w-[2100px] px-3 py-4 md:px-6 md:py-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                size="icon-sm"
+                className="size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+              >
+                <Link href={backHref} aria-label="Back to runs" title="Back to runs">
+                  <ArrowLeft className="size-3.5" />
+                </Link>
+              </Button>
               <h1 className="text-base font-semibold tracking-tight md:text-lg">
                 {runName}
               </h1>
