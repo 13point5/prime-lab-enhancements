@@ -1,0 +1,1 @@
+export const DEFAULT_CHART_LINE_WIDTH = 1.5;

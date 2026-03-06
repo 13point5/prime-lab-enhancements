@@ -11,6 +11,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { DEFAULT_CHART_LINE_WIDTH } from "@/lib/chart-constants";
 import { cn } from "@/lib/utils";
 
 type JsonObject = Record<string, unknown>;
@@ -26,7 +27,10 @@ type RawStepPayload = {
 
 type RunEnvironment = {
   id?: string;
+  name?: string | null;
+  args?: unknown;
   version?: string;
+  version_id?: string;
 };
 
 type RunMeta = {
@@ -80,7 +84,6 @@ type DistributionBin = {
 };
 
 const REWARD_COLOR = "#7c5cff";
-const CHART_LINE_WIDTH = 1.5;
 
 const METRIC_PRIORITY = [
   "alignment_reward",
@@ -776,7 +779,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
                       dataKey="reward"
                       name="reward"
                       stroke={REWARD_COLOR}
-                      strokeWidth={CHART_LINE_WIDTH}
+                      strokeWidth={DEFAULT_CHART_LINE_WIDTH}
                       dot={false}
                       connectNulls
                       isAnimationActive={false}
@@ -840,7 +843,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
                           dataKey={metricKey}
                           name={metricKey}
                           stroke={metricColorByKey[metricKey]}
-                          strokeWidth={CHART_LINE_WIDTH}
+                          strokeWidth={DEFAULT_CHART_LINE_WIDTH}
                           dot={false}
                           connectNulls
                           isAnimationActive={false}
@@ -916,7 +919,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
                         dataKey="reward"
                         name="reward"
                         stroke={REWARD_COLOR}
-                        strokeWidth={CHART_LINE_WIDTH}
+                        strokeWidth={DEFAULT_CHART_LINE_WIDTH}
                         dot={false}
                         connectNulls
                         isAnimationActive={false}
@@ -985,7 +988,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
                           dataKey={metricKey}
                           name={metricKey}
                           stroke={color}
-                          strokeWidth={CHART_LINE_WIDTH}
+                          strokeWidth={DEFAULT_CHART_LINE_WIDTH}
                           dot={false}
                           connectNulls
                           isAnimationActive={false}

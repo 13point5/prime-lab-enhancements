@@ -47,7 +47,10 @@ type RawStepPayload = {
 
 type RunEnvironment = {
   id?: string;
+  name?: string | null;
+  args?: unknown;
   version?: string;
+  version_id?: string;
 };
 
 type RunPayloadRun = {
