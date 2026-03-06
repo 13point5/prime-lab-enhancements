@@ -863,7 +863,7 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
                               size="sm"
                               className="bg-zinc-700 text-zinc-100 hover:bg-zinc-600"
                             >
-                              <Link href={compareHref}>Open Compare View</Link>
+                              <Link href={compareHref}>Compare Runs</Link>
                             </Button>
                           ) : (
                             <Button
@@ -872,7 +872,7 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
                               className="bg-zinc-800 text-zinc-500"
                               disabled
                             >
-                              Open Compare View
+                              Compare Runs
                             </Button>
                           )}
                         </div>
