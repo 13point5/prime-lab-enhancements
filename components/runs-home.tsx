@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 
 import type { RawRolloutsData, RawRun } from "@/components/run-rollouts";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -933,7 +934,17 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
                                     </div>
                                   </Link>
                                 </TableCell>
-                                <TableCell className="text-zinc-300">{run.statusLabel}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "h-6 border font-semibold",
+                                      statusBadgeClasses(run.status),
+                                    )}
+                                  >
+                                    {run.statusLabel}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell className="w-[220px]">
                                   <div className="space-y-1.5">
                                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
