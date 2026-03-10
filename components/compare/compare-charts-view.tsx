@@ -45,7 +45,7 @@ export function CompareChartsView({
         </div>
       </ResizablePanel>
 
-      <ResizableHandle className="bg-transparent after:w-3" tabIndex={-1} />
+      <ResizableHandle className="z-20 bg-transparent after:w-3" tabIndex={-1} />
 
       <ResizablePanel defaultSize="62%" minSize="520px">
         <CompareChartsContent selectedRuns={selectedRuns} chartCards={chartCards} />

@@ -788,54 +788,58 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
   );
 
   return (
-    <main className="min-h-screen bg-black text-zinc-100">
-      <div className="flex min-h-screen flex-col">
+    <main className="h-screen overflow-hidden bg-black text-zinc-100">
+      <div className="flex h-full flex-col">
         <header className="border-b border-zinc-900">
           <div className="px-4 py-4 sm:px-6">
             <h1 className="text-xl font-semibold tracking-tight">Training</h1>
           </div>
         </header>
 
-        <section className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
+        <section className="flex min-h-0 flex-1 flex-col px-4 py-4 sm:px-6 sm:py-5">
           {environmentGroups.length === 0 ? (
-            <div className="rounded-lg border border-zinc-900 bg-[#060606] px-6 py-14 text-center text-zinc-500">
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-zinc-900 bg-[#060606] px-6 py-14 text-center text-zinc-500">
               No runs found.
             </div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
-              <aside className="rounded-xl border border-zinc-900 bg-[#060606] p-3">
+            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+              <aside className="flex min-h-0 flex-col rounded-xl border border-zinc-900 bg-[#060606] p-3">
                 <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   Environments
                 </p>
-                <div className="space-y-1.5">
-                  {environmentGroups.map((group) => {
-                    const isActive = group.key === activeGroup?.key;
-                    return (
-                      <button
-                        key={group.key}
-                        type="button"
-                        onClick={() => setActiveEnvironmentKey(group.key)}
-                        className={cn(
-                          "w-full rounded-lg border px-3 py-2 text-left transition-colors",
-                          isActive
-                            ? "border-zinc-600 bg-zinc-900 text-zinc-100"
-                            : "border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-900/70 hover:text-zinc-200",
-                        )}
-                      >
-                        <p className="truncate text-sm font-medium">{group.environment}</p>
-                      </button>
-                    );
-                  })}
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-1.5">
+                    {environmentGroups.map((group) => {
+                      const isActive = group.key === activeGroup?.key;
+                      return (
+                        <button
+                          key={group.key}
+                          type="button"
+                          onClick={() => setActiveEnvironmentKey(group.key)}
+                          className={cn(
+                            "w-full rounded-lg border px-3 py-2 text-left transition-colors",
+                            isActive
+                              ? "border-zinc-600 bg-zinc-900 text-zinc-100"
+                              : "border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-900/70 hover:text-zinc-200",
+                          )}
+                        >
+                          <p className="truncate text-sm font-medium">{group.environment}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </aside>
 
-              <div className="space-y-4">
+              <div className="flex min-h-0 flex-col gap-4">
                 {activeGroup ? (
                   <>
-                    <h2 className="text-lg font-semibold text-zinc-100">{activeGroup.environment}</h2>
+                    <h2 className="shrink-0 text-lg font-semibold text-zinc-100">
+                      {activeGroup.environment}
+                    </h2>
 
-                    <div className="overflow-hidden rounded-lg border border-zinc-900 bg-[#060606]">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-900 px-4 py-2.5">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-900 bg-[#060606]">
+                      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-zinc-900 px-4 py-2.5">
                         <p className="text-sm font-medium text-zinc-300">Runs</p>
                         <div className="flex items-center gap-2">
                           <span className="hidden text-xs text-zinc-500 sm:inline">
@@ -879,111 +883,113 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
                         </div>
                       </div>
 
-                      <Table className="min-w-[980px]">
-                        <TableHeader className="bg-zinc-950/80">
-                          <TableRow className="border-zinc-900 hover:bg-zinc-950/80">
-                            <TableHead className="w-10 pl-4">
-                              <Checkbox
-                                checked={allRunsSelected}
-                                onCheckedChange={(checked) => handleToggleAllRuns(checked === true)}
-                                aria-label="Select all runs"
-                              />
-                            </TableHead>
-                            <TableHead className="text-zinc-400">Run</TableHead>
-                            <TableHead className="text-zinc-400">Status</TableHead>
-                            <TableHead className="text-zinc-400">Progress</TableHead>
-                            <TableHead className="text-zinc-400">Environment Version</TableHead>
-                            <TableHead className="text-zinc-400">Model</TableHead>
-                            <TableHead className="text-zinc-400">Last Updated</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {activeGroup.runs.map((run) => {
-                            const href = `/run/${encodeURIComponent(run.runId)}`;
-                            const selected = selectedRunIdSet.has(run.runId);
-                            const runColor = runColorById[run.runId] ?? "#7c5cff";
+                      <div className="min-h-0 flex-1 overflow-auto">
+                        <Table className="min-w-[980px]">
+                          <TableHeader className="bg-zinc-950/80">
+                            <TableRow className="border-zinc-900 hover:bg-zinc-950/80">
+                              <TableHead className="w-10 pl-4">
+                                <Checkbox
+                                  checked={allRunsSelected}
+                                  onCheckedChange={(checked) => handleToggleAllRuns(checked === true)}
+                                  aria-label="Select all runs"
+                                />
+                              </TableHead>
+                              <TableHead className="text-zinc-400">Run</TableHead>
+                              <TableHead className="text-zinc-400">Status</TableHead>
+                              <TableHead className="text-zinc-400">Progress</TableHead>
+                              <TableHead className="text-zinc-400">Environment Version</TableHead>
+                              <TableHead className="text-zinc-400">Model</TableHead>
+                              <TableHead className="text-zinc-400">Last Updated</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {activeGroup.runs.map((run) => {
+                              const href = `/run/${encodeURIComponent(run.runId)}`;
+                              const selected = selectedRunIdSet.has(run.runId);
+                              const runColor = runColorById[run.runId] ?? "#7c5cff";
 
-                            return (
-                              <TableRow
-                                key={run.key}
-                                className={cn(
-                                  "border-zinc-900 hover:bg-zinc-900/60",
-                                  selected && "bg-zinc-900/40",
-                                )}
-                              >
-                                <TableCell className="pl-4">
-                                  <Checkbox
-                                    checked={selected}
-                                    onCheckedChange={(checked) =>
-                                      handleToggleRun(run.runId, checked === true)
-                                    }
-                                    aria-label={`Select ${run.name}`}
-                                  />
-                                </TableCell>
-                                <TableCell className="max-w-[340px] font-medium text-zinc-100">
-                                  <Link href={href} className="block">
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className="size-2.5 shrink-0 rounded-full"
-                                        style={{ backgroundColor: runColor }}
-                                      />
-                                      <span className="truncate">{run.name}</span>
+                              return (
+                                <TableRow
+                                  key={run.key}
+                                  className={cn(
+                                    "border-zinc-900 hover:bg-zinc-900/60",
+                                    selected && "bg-zinc-900/40",
+                                  )}
+                                >
+                                  <TableCell className="pl-4">
+                                    <Checkbox
+                                      checked={selected}
+                                      onCheckedChange={(checked) =>
+                                        handleToggleRun(run.runId, checked === true)
+                                      }
+                                      aria-label={`Select ${run.name}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="max-w-[340px] font-medium text-zinc-100">
+                                    <Link href={href} className="block">
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className="size-2.5 shrink-0 rounded-full"
+                                          style={{ backgroundColor: runColor }}
+                                        />
+                                        <span className="truncate">{run.name}</span>
+                                      </div>
+                                      <div className="mt-0.5 truncate text-xs text-zinc-500">
+                                        {run.runId}
+                                      </div>
+                                    </Link>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "h-6 border font-semibold",
+                                        statusBadgeClasses(run.status),
+                                      )}
+                                    >
+                                      {run.statusLabel}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="w-[220px]">
+                                    <div className="space-y-1.5">
+                                      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                                        <div
+                                          className="h-full rounded-full"
+                                          style={{
+                                            width: `${Math.round(run.progressRatio * 100)}%`,
+                                            backgroundColor: runColor,
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between gap-2 text-xs text-zinc-400">
+                                        <span>{run.durationLabel}</span>
+                                        <span>{run.progressLabel}</span>
+                                      </div>
                                     </div>
-                                    <div className="mt-0.5 truncate text-xs text-zinc-500">
-                                      {run.runId}
+                                  </TableCell>
+                                  <TableCell className="max-w-[240px] text-zinc-300">
+                                    <div className="truncate">
+                                      {run.environmentVersion ? `v${run.environmentVersion}` : "-"}
                                     </div>
-                                  </Link>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant="outline"
-                                    className={cn(
-                                      "h-6 border font-semibold",
-                                      statusBadgeClasses(run.status),
-                                    )}
-                                  >
-                                    {run.statusLabel}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="w-[220px]">
-                                  <div className="space-y-1.5">
-                                    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                                      <div
-                                        className="h-full rounded-full"
-                                        style={{
-                                          width: `${Math.round(run.progressRatio * 100)}%`,
-                                          backgroundColor: runColor,
-                                        }}
-                                      />
+                                    <div
+                                      className="truncate font-mono text-xs text-zinc-500"
+                                      title={run.environmentVersionId ?? ""}
+                                    >
+                                      {run.environmentVersionId
+                                        ? shortVersionId(run.environmentVersionId)
+                                        : "-"}
                                     </div>
-                                    <div className="flex items-center justify-between gap-2 text-xs text-zinc-400">
-                                      <span>{run.durationLabel}</span>
-                                      <span>{run.progressLabel}</span>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="max-w-[240px] text-zinc-300">
-                                  <div className="truncate">
-                                    {run.environmentVersion ? `v${run.environmentVersion}` : "-"}
-                                  </div>
-                                  <div
-                                    className="truncate font-mono text-xs text-zinc-500"
-                                    title={run.environmentVersionId ?? ""}
-                                  >
-                                    {run.environmentVersionId
-                                      ? shortVersionId(run.environmentVersionId)
-                                      : "-"}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="max-w-[300px] truncate text-zinc-300">
-                                  {run.model}
-                                </TableCell>
-                                <TableCell className="text-zinc-300">{run.lastUpdatedLabel}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                                  </TableCell>
+                                  <TableCell className="max-w-[300px] truncate text-zinc-300">
+                                    {run.model}
+                                  </TableCell>
+                                  <TableCell className="text-zinc-300">{run.lastUpdatedLabel}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   </>
                 ) : null}

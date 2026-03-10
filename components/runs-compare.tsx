@@ -18,6 +18,7 @@ import {
   buildRewardChartData,
   buildRunColorMap,
   buildRunSummaries,
+  type RunSummary,
 } from "@/components/runs-home";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +57,95 @@ function arraysEqual(a: string[], b: string[]): boolean {
     }
   }
   return true;
+}
+
+function CompareLineChart({
+  data,
+  lineKeyPrefix,
+  selectedRuns,
+  runChartConfig,
+  runColorById,
+  stepTicks,
+  onStepClick,
+}: {
+  data: Array<Record<string, number | null>>;
+  lineKeyPrefix: string;
+  selectedRuns: RunSummary[];
+  runChartConfig: ChartConfig;
+  runColorById: Record<string, string>;
+  stepTicks: number[];
+  onStepClick?: (step: number) => void;
+}) {
+  const handleChartClick = onStepClick
+    ? (state?: { activeLabel?: unknown }) => {
+        const rawStep = state?.activeLabel;
+        const parsedStep = typeof rawStep === "number" ? rawStep : Number(rawStep);
+        if (Number.isFinite(parsedStep)) {
+          onStepClick(parsedStep);
+        }
+      }
+    : undefined;
+
+  return (
+    <ChartContainer
+      config={runChartConfig}
+      className={`h-[220px] w-full aspect-auto${onStepClick ? " cursor-pointer" : ""}`}
+    >
+      <LineChart
+        data={data}
+        margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
+        onClick={handleChartClick}
+      >
+        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+        <XAxis
+          type="number"
+          dataKey="step"
+          domain={["dataMin", "dataMax"]}
+          ticks={stepTicks}
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          stroke="rgba(161,161,170,0.8)"
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          stroke="rgba(161,161,170,0.8)"
+        />
+        <ChartTooltip
+          cursor={false}
+          position={{ x: 48, y: 12 }}
+          wrapperStyle={{ pointerEvents: "none", zIndex: 20 }}
+          content={
+            <ChartTooltipContent
+              indicator="line"
+              className="max-w-[220px] border-zinc-700 bg-zinc-900/95 text-zinc-100"
+            />
+          }
+        />
+        {selectedRuns.map((run) => (
+          <Line
+            key={`${lineKeyPrefix}-${run.runId}`}
+            type="monotone"
+            dataKey={run.runId}
+            name={run.name}
+            stroke={runColorById[run.runId]}
+            strokeWidth={DEFAULT_CHART_LINE_WIDTH}
+            dot={false}
+            activeDot={{
+              r: 4,
+              fill: runColorById[run.runId],
+              stroke: "#09090b",
+              strokeWidth: 1.5,
+            }}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ))}
+      </LineChart>
+    </ChartContainer>
+  );
 }
 
 export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: RunsCompareProps) {
@@ -237,71 +327,6 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
   }, []);
 
   const createChartCards = React.useCallback((onStepClick?: (step: number) => void) => {
-    const handleChartClick = onStepClick
-      ? (state?: { activeLabel?: unknown }) => {
-          const rawStep = state?.activeLabel;
-          const parsedStep = typeof rawStep === "number" ? rawStep : Number(rawStep);
-          if (Number.isFinite(parsedStep)) {
-            onStepClick(parsedStep);
-          }
-        }
-      : undefined;
-
-    const renderChart = (
-      data: Array<Record<string, number | null>>,
-      lineKeyPrefix: string,
-    ) => (
-      <ChartContainer
-        config={runChartConfig}
-        className={`h-[220px] w-full aspect-auto${onStepClick ? " cursor-pointer" : ""}`}
-      >
-        <LineChart
-          data={data}
-          margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
-          onClick={handleChartClick}
-        >
-          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-          <XAxis
-            type="number"
-            dataKey="step"
-            domain={["dataMin", "dataMax"]}
-            ticks={rewardSeries.stepTicks}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            stroke="rgba(161,161,170,0.8)"
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            stroke="rgba(161,161,170,0.8)"
-          />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                indicator="line"
-                className="border-zinc-700 bg-zinc-900/95 text-zinc-100"
-              />
-            }
-          />
-          {selectedRuns.map((run) => (
-            <Line
-              key={`${lineKeyPrefix}-${run.runId}`}
-              type="monotone"
-              dataKey={run.runId}
-              name={run.name}
-              stroke={runColorById[run.runId]}
-              strokeWidth={DEFAULT_CHART_LINE_WIDTH}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
-            />
-          ))}
-        </LineChart>
-      </ChartContainer>
-    );
-
     const cards: ChartCardGridItem[] = [
       {
         id: "reward-mean",
@@ -312,7 +337,15 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
               No data.
             </div>
           ) : (
-            renderChart(rewardSeries.data, "reward-line")
+            <CompareLineChart
+              data={rewardSeries.data}
+              lineKeyPrefix="reward-line"
+              selectedRuns={selectedRuns}
+              runChartConfig={runChartConfig}
+              runColorById={runColorById}
+              stepTicks={rewardSeries.stepTicks}
+              onStepClick={onStepClick}
+            />
           ),
       },
     ];
@@ -328,7 +361,15 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
               No data.
             </div>
           ) : (
-            renderChart(metricData, metricKey)
+            <CompareLineChart
+              data={metricData}
+              lineKeyPrefix={metricKey}
+              selectedRuns={selectedRuns}
+              runChartConfig={runChartConfig}
+              runColorById={runColorById}
+              stepTicks={rewardSeries.stepTicks}
+              onStepClick={onStepClick}
+            />
           ),
       });
     }
