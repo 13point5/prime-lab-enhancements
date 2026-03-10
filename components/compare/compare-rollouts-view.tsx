@@ -19,14 +19,12 @@ export function CompareRolloutsView({
   requestedStep,
 }: CompareRolloutsViewProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-zinc-900 bg-[#060606] p-4">
-      <CompareRolloutsContent
-        selectedRuns={selectedRuns}
-        activeRunId={activeRunId}
-        runColorById={runColorById}
-        onActiveRunIdChange={onActiveRunIdChange}
-        requestedStep={requestedStep}
-      />
-    </div>
+    <CompareRolloutsContent
+      selectedRuns={selectedRuns}
+      activeRunId={activeRunId}
+      runColorById={runColorById}
+      onActiveRunIdChange={onActiveRunIdChange}
+      requestedStep={requestedStep}
+    />
   );
 }

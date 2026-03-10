@@ -22,6 +22,16 @@ import { Button } from "@/components/ui/button";
 import { StepSliderControl } from "@/components/step-slider-control";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  extractConversationMessages,
+  getLastAssistantMessageKey,
+  getLastConversationPreview,
+} from "@/lib/rollout-conversation";
+import {
+  readRolloutViewModeStore,
+  type RolloutDataViewMode,
+  writeRolloutViewModeStore,
+} from "@/lib/run-selection-storage";
 import { cn } from "@/lib/utils";
 
 type JsonObject = Record<string, unknown>;
@@ -120,20 +130,12 @@ type Row = {
   sample: RawSample;
 };
 
-type ConversationMessage = {
-  key: string;
-  role: string;
-  content: string;
-};
-
 type SelectedRolloutEntry = {
   run_id: string;
   run_name: string;
   step: number | null;
   row: Row;
 };
-
-type DataViewMode = "table" | "split" | "grid";
 
 function getRolloutSelectionKey(runId: string, step: number | null, rowKey: string): string {
   return `${runId}::${step ?? "na"}::${rowKey}`;
@@ -198,23 +200,6 @@ function compactText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-function stringifyContent(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return "";
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
 function extractPromptText(promptRaw: unknown): string {
   const parsed = parseMaybeJson(promptRaw);
   if (Array.isArray(parsed)) {
@@ -273,50 +258,6 @@ function extractInfoText(sample: RawSample): string {
 
 function extractMetrics(sample: RawSample): JsonObject {
   return toObject(sample.metrics) ?? {};
-}
-
-function extractConversationMessages(sample: RawSample): ConversationMessage[] {
-  const messages: ConversationMessage[] = [];
-
-  const appendMessages = (source: unknown, prefix: string) => {
-    const parsed = parseMaybeJson(source);
-    if (!Array.isArray(parsed)) {
-      return;
-    }
-
-    let localIndex = 0;
-    for (const item of parsed) {
-      if (!item || typeof item !== "object" || Array.isArray(item)) {
-        continue;
-      }
-      const roleRaw = (item as JsonObject).role;
-      const contentRaw = (item as JsonObject).content;
-      const role = typeof roleRaw === "string" ? roleRaw : "message";
-      const content = stringifyContent(contentRaw);
-      messages.push({
-        key: `${prefix}:${localIndex}:${role}`,
-        role,
-        content,
-      });
-      localIndex += 1;
-    }
-  };
-
-  appendMessages(sample.prompt, "prompt");
-  appendMessages(sample.completion, "completion");
-
-  if (messages.length === 0) {
-    const answer = stringifyContent(sample.answer);
-    if (answer.trim() !== "") {
-      messages.push({
-        key: "answer:0:assistant",
-        role: "assistant",
-        content: answer,
-      });
-    }
-  }
-
-  return messages;
 }
 
 function displayNumber(value: number | null): string {
@@ -415,9 +356,7 @@ export function RunRollouts({ run, backHref }: RunRolloutsProps) {
       const rowKey = `${activeStep ?? "na"}:${sample.problem_id ?? "na"}:${sample.sample_id ?? "na"}:${index}`;
       const selectionKey = getRolloutSelectionKey(runId, activeStep, rowKey);
       const messages = extractConversationMessages(sample);
-      const lastMessage = messages.length
-        ? messages[messages.length - 1]?.content ?? ""
-        : "";
+      const lastMessage = getLastConversationPreview(messages);
 
       return {
         selectionKey,
@@ -443,13 +382,26 @@ export function RunRollouts({ run, backHref }: RunRolloutsProps) {
     Record<string, SelectedRolloutEntry>
   >({});
   const [copyStatus, setCopyStatus] = React.useState<"idle" | "copied" | "error">("idle");
-  const [dataViewMode, setDataViewMode] = React.useState<DataViewMode>("table");
+  const [dataViewMode, setDataViewMode] = React.useState<RolloutDataViewMode>("table");
   const [activeTab, setActiveTab] = React.useState("overview");
+  const [hasLoadedRolloutViewMode, setHasLoadedRolloutViewMode] = React.useState(false);
 
   const selectedCount = React.useMemo(
     () => Object.keys(selectedRollouts).length,
     [selectedRollouts],
   );
+
+  React.useEffect(() => {
+    setDataViewMode(readRolloutViewModeStore());
+    setHasLoadedRolloutViewMode(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!hasLoadedRolloutViewMode) {
+      return;
+    }
+    writeRolloutViewModeStore(dataViewMode);
+  }, [dataViewMode, hasLoadedRolloutViewMode]);
 
   const visibleSelection = React.useMemo(() => {
     const total = rows.length;
@@ -539,11 +491,8 @@ export function RunRollouts({ run, backHref }: RunRolloutsProps) {
   }, [dialogRolloutIndex, rows.length]);
 
   React.useEffect(() => {
-    const lastMessageKey =
-      selectedMessages.length > 0
-        ? selectedMessages[selectedMessages.length - 1]?.key
-        : undefined;
-    setExpandedMessageKeys(lastMessageKey ? [lastMessageKey] : []);
+    const lastAssistantMessageKey = getLastAssistantMessageKey(selectedMessages);
+    setExpandedMessageKeys(lastAssistantMessageKey ? [lastAssistantMessageKey] : []);
   }, [selectedRollout?.key, selectedMessages]);
 
   const toggleMessage = React.useCallback((key: string) => {
@@ -636,9 +585,22 @@ export function RunRollouts({ run, backHref }: RunRolloutsProps) {
           if (messages.length > 0) {
             for (const message of messages) {
               lines.push(`${formatRoleLabel(message.role)}:`);
-              lines.push("````text");
-              lines.push(message.content || "");
-              lines.push("````");
+              if (message.content) {
+                lines.push("````text");
+                lines.push(message.content);
+                lines.push("````");
+              }
+              if (message.toolCalls.length > 0) {
+                lines.push("Tool Calls:");
+                lines.push("````json");
+                lines.push(JSON.stringify(message.toolCalls, null, 2));
+                lines.push("````");
+              }
+              if (!message.content && message.toolCalls.length === 0) {
+                lines.push("````text");
+                lines.push("(no message content)");
+                lines.push("````");
+              }
               lines.push("");
             }
           } else {

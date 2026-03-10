@@ -66,7 +66,7 @@ export function RolloutTableView<T extends RolloutTableRowBase>({
 }: RolloutTableViewProps<T>) {
   return (
     <div
-      className="overflow-auto rounded-md bg-[#141414]"
+      className="overflow-auto rounded-lg bg-[#141414]"
       style={{ border: "1px solid rgba(255, 255, 255, 0.05)" }}
     >
       <Table className="min-w-[1230px] table-fixed border-separate border-spacing-0 text-sm">

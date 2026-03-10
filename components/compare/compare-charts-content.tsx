@@ -13,7 +13,7 @@ export function CompareChartsContent({
   chartCards,
 }: CompareChartsContentProps) {
   return (
-    <div className="h-full overflow-y-auto p-4">
+    <div className="h-full overflow-y-auto px-4 pb-4">
       {selectedRuns.length === 0 ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-4 py-10 text-center text-sm text-zinc-500">
           Select at least one run to view charts.

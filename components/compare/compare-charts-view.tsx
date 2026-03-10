@@ -30,20 +30,22 @@ export function CompareChartsView({
   return (
     <ResizablePanelGroup
       orientation="horizontal"
-      className="h-full min-h-0 w-full overflow-hidden rounded-xl border border-zinc-900 bg-[#060606]"
+      className="h-full min-h-0 w-full overflow-hidden"
     >
       <ResizablePanel defaultSize="38%" minSize="420px" maxSize="62%">
-        <CompareRunsTable
-          runs={runs}
-          runColorById={runColorById}
-          selectedRunIdSet={selectedRunIdSet}
-          allRunsSelected={allRunsSelected}
-          onToggleRun={onToggleRun}
-          onToggleAllRuns={onToggleAllRuns}
-        />
+        <div className="h-full overflow-hidden rounded-lg border border-zinc-900 bg-[#060606]">
+          <CompareRunsTable
+            runs={runs}
+            runColorById={runColorById}
+            selectedRunIdSet={selectedRunIdSet}
+            allRunsSelected={allRunsSelected}
+            onToggleRun={onToggleRun}
+            onToggleAllRuns={onToggleAllRuns}
+          />
+        </div>
       </ResizablePanel>
 
-      <ResizableHandle withHandle className="bg-zinc-900" tabIndex={-1} />
+      <ResizableHandle className="bg-transparent after:w-3" tabIndex={-1} />
 
       <ResizablePanel defaultSize="62%" minSize="520px">
         <CompareChartsContent selectedRuns={selectedRuns} chartCards={chartCards} />

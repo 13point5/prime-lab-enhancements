@@ -87,7 +87,7 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
     Record<string, string[]>
   >({});
   const [hasLoadedRunSelections, setHasLoadedRunSelections] = React.useState(false);
-  const [variation, setVariation] = React.useState<CompareVariation>("variation-1");
+  const [variation, setVariation] = React.useState<CompareVariation>("variation-2");
   const [variationOneTab, setVariationOneTab] = React.useState<"charts" | "rollouts">("charts");
   const [variationTwoTab, setVariationTwoTab] = React.useState<string>("charts");
   const [variationTwoStepTabs, setVariationTwoStepTabs] = React.useState<CompareStepTab[]>([]);
@@ -416,8 +416,8 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
                 <SelectValue placeholder="Choose variation" />
               </SelectTrigger>
               <SelectContent className="border-zinc-800 bg-zinc-950 text-zinc-100">
-                <SelectItem value="variation-1">Variation 1</SelectItem>
                 <SelectItem value="variation-2">Variation 2</SelectItem>
+                <SelectItem value="variation-1">Variation 1</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -431,7 +431,7 @@ export function RunsCompare({ data, initialEnvironmentKey, initialRunIds }: Runs
           }
         >
           {!activeGroup ? (
-            <div className="w-full rounded-xl border border-zinc-900 bg-[#060606] px-6 py-14 text-center text-zinc-500">
+            <div className="w-full rounded-lg border border-zinc-900 bg-[#060606] px-6 py-14 text-center text-zinc-500">
               No runs found.
             </div>
           ) : variation === "variation-1" ? (

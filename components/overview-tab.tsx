@@ -1081,7 +1081,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
               <p className="text-xs text-zinc-400">Status</p>
               <span
                 className={cn(
-                  "mt-2 inline-flex rounded-md border px-2 py-1 text-xs font-semibold",
+                  "mt-2 inline-flex rounded-lg border px-2 py-1 text-xs font-semibold",
                   getStatusClasses(runMeta?.status ?? ""),
                 )}
               >
@@ -1119,7 +1119,7 @@ export function RunOverviewTab({ run }: RunOverviewTabProps) {
                   <div key={environment.id ?? "unknown-env"} className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-zinc-100">{environment.id ?? "unknown"}</span>
                     {environment.version ? (
-                      <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
+                      <span className="rounded-lg bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
                         v{environment.version}
                       </span>
                     ) : null}

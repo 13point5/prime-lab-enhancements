@@ -3,7 +3,10 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 
+import { RolloutToolCallCard } from "@/components/rollouts/rollout-tool-call-card";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { ConversationMessage } from "@/lib/rollout-conversation";
 import { cn } from "@/lib/utils";
 
 type RolloutSplitRowBase = {
@@ -12,12 +15,6 @@ type RolloutSplitRowBase = {
   id: string;
   prompt: string;
   reward: number | null;
-};
-
-type ConversationMessage = {
-  key: string;
-  role: string;
-  content: string;
 };
 
 type RolloutSplitViewProps<T extends RolloutSplitRowBase> = {
@@ -61,7 +58,7 @@ export function RolloutSplitView<T extends RolloutSplitRowBase>({
           </p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <div className="space-y-1.5">
+          <div className="flex flex-col gap-1.5">
             {rows.map((row, index) => {
               const isActive = index === boundedIndex;
               const isChecked = Boolean(selectedRowKeys[row.selectionKey]);
@@ -119,44 +116,76 @@ export function RolloutSplitView<T extends RolloutSplitRowBase>({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3 pt-2">
-          {selectedMessages.length > 0 ? (
-            selectedMessages.map((message) => {
-              const isExpanded = expandedMessageKeys.includes(message.key);
-              return (
-                <div
-                  key={message.key}
-                  className="overflow-hidden rounded-md border border-white/10 bg-black/50"
-                >
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left"
-                    onClick={() => onToggleMessage(message.key)}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-full bg-black/40">
+            {selectedMessages.length > 0 ? (
+              selectedMessages.map((message, index) => {
+                const isExpanded = expandedMessageKeys.includes(message.key);
+                const hasMessageContent = message.content.trim() !== "";
+                const hasToolCalls = message.toolCalls.length > 0;
+                return (
+                  <div
+                    key={message.key}
+                    className={cn(
+                      "overflow-hidden bg-black/20",
+                      index > 0 && "border-t border-white/10",
+                    )}
                   >
-                    <span className="text-xs font-semibold lowercase leading-none tracking-wide text-zinc-200">
-                      {message.role}
-                    </span>
-                    <ChevronDown
-                      className={`size-3.5 text-zinc-500 transition-transform ${
-                        isExpanded ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {isExpanded ? (
-                    <div className="border-t border-white/10 px-4 py-2.5">
-                      <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-zinc-200">
-                        {message.content}
-                      </pre>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })
-          ) : (
-            <div className="rounded-md border border-white/10 bg-black/40 px-4 py-6 text-sm text-zinc-500">
-              No messages found for this rollout.
-            </div>
-          )}
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left"
+                      onClick={() => {
+                        if (hasMessageContent) {
+                          onToggleMessage(message.key);
+                        }
+                      }}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-xs font-semibold lowercase leading-none tracking-wide text-zinc-200">
+                          {message.role}
+                        </span>
+                        {hasToolCalls ? (
+                          <Badge variant="secondary">{`${message.toolCalls.length} tool call${
+                            message.toolCalls.length === 1 ? "" : "s"
+                          }`}</Badge>
+                        ) : null}
+                        {message.toolCallId ? (
+                          <Badge variant="outline">{message.toolCallId}</Badge>
+                        ) : null}
+                      </div>
+                      {hasMessageContent ? (
+                        <ChevronDown
+                          className={`size-3.5 text-zinc-500 transition-transform ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      ) : null}
+                    </button>
+                    {isExpanded && hasMessageContent ? (
+                      <div className="border-t border-white/10 px-4 py-2.5">
+                        <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-zinc-200">
+                          {message.content}
+                        </pre>
+                      </div>
+                    ) : null}
+                    {hasToolCalls ? (
+                      <div className="border-t border-white/10 px-4 py-2.5">
+                        <div className="flex flex-col gap-2">
+                          {message.toolCalls.map((toolCall) => (
+                            <RolloutToolCallCard key={toolCall.id} toolCall={toolCall} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-4 py-6 text-sm text-zinc-500">
+                No messages found for this rollout.
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>

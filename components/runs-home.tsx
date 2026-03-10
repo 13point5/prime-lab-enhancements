@@ -798,7 +798,7 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
 
         <section className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
           {environmentGroups.length === 0 ? (
-            <div className="rounded-xl border border-zinc-900 bg-[#060606] px-6 py-14 text-center text-zinc-500">
+            <div className="rounded-lg border border-zinc-900 bg-[#060606] px-6 py-14 text-center text-zinc-500">
               No runs found.
             </div>
           ) : (
@@ -834,7 +834,7 @@ export function RunsHome({ data }: { data: RawRolloutsData }) {
                   <>
                     <h2 className="text-lg font-semibold text-zinc-100">{activeGroup.environment}</h2>
 
-                    <div className="overflow-hidden rounded-xl border border-zinc-900 bg-[#060606]">
+                    <div className="overflow-hidden rounded-lg border border-zinc-900 bg-[#060606]">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-900 px-4 py-2.5">
                         <p className="text-sm font-medium text-zinc-300">Runs</p>
                         <div className="flex items-center gap-2">

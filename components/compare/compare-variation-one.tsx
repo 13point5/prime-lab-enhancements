@@ -40,7 +40,7 @@ export function CompareVariationOne({
   return (
     <ResizablePanelGroup
       orientation="horizontal"
-      className="h-full min-h-0 w-full overflow-hidden rounded-xl border border-zinc-900 bg-[#060606]"
+      className="h-full min-h-0 w-full overflow-hidden rounded-lg border border-zinc-900 bg-[#060606]"
     >
       <ResizablePanel defaultSize="38%" minSize="420px" maxSize="62%">
         <CompareRunsTable
